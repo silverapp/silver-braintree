@@ -1,0 +1,2 @@
+braintree==3.32.0
+django-silver
