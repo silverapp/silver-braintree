@@ -12,28 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pytest
+from django_dynamic_fixture import G
 from mock import patch
 from braintree import Transaction as BraintreeTransaction
-from cryptography.fernet import Fernet
-
-from django.conf import settings
-from django.test import TestCase
 
 from silver.models import PaymentProcessorManager
 from silver.models import Transaction
 
+from silver_braintree.models import BraintreePaymentMethod
 from silver_braintree.models import BraintreeTriggered
 
-from .factories import BraintreeTransactionFactory
 
-
-class TestBraintreeTransactions(TestCase):
-    def setUp(self):
+class TestBraintreeTransactions:
+    def setup_method(self):
         BraintreeTriggered._has_been_setup = True
         PaymentProcessorManager.register(BraintreeTriggered,
                                          display_name='Braintree')
-
-        settings.PAYMENT_METHOD_SECRET = bytes(Fernet.generate_key())
 
         class Object(object):
             pass
@@ -60,12 +55,22 @@ class TestBraintreeTransactions(TestCase):
         result.transaction = transaction
         self.result = result
 
-    def tearDown(self):
+    def teardown_method(self):
         BraintreeTriggered._has_been_setup = False
         PaymentProcessorManager.unregister(BraintreeTriggered)
 
+    def create_braintree_payment_method(self, *args, **kwargs):
+        return G(BraintreePaymentMethod, payment_processor=BraintreeTriggered,
+                 *args, **kwargs)
+
+    def create_braintree_transaction(self, *args, **kwargs):
+        return G(Transaction,
+                 payment_method=self.create_braintree_payment_method(),
+                 *args, **kwargs)
+
+    @pytest.mark.django_db
     def test_update_status_transaction_settle(self):
-        transaction = BraintreeTransactionFactory.create(
+        transaction = self.create_braintree_transaction(
             state=Transaction.States.Pending, data={
                 'braintree_id': 'beertrain'
             }
@@ -77,11 +82,12 @@ class TestBraintreeTransactions(TestCase):
 
             find_mock.assert_called_once_with('beertrain')
 
-            self.assertEqual(transaction.state, transaction.States.Settled)
+            assert transaction.state == transaction.States.Settled
 
+    @pytest.mark.django_db
     def test_update_status_transaction_fail(self):
         self.transaction.status = BraintreeTransaction.Status.ProcessorDeclined
-        transaction = BraintreeTransactionFactory.create(
+        transaction = self.create_braintree_transaction(
             state=Transaction.States.Pending, data={
                 'braintree_id': 'beertrain'
             }
@@ -92,10 +98,11 @@ class TestBraintreeTransactions(TestCase):
 
             find_mock.assert_called_once_with('beertrain')
 
-            self.assertEqual(transaction.state, transaction.States.Failed)
+            assert transaction.state == transaction.States.Failed
 
+    @pytest.mark.django_db
     def test_execute_transaction_with_nonce(self):
-        transaction = BraintreeTransactionFactory.create()
+        transaction = self.create_braintree_transaction()
         payment_method = transaction.payment_method
         payment_method.nonce = 'some-nonce'
         payment_method.is_recurring = True
@@ -106,7 +113,8 @@ class TestBraintreeTransactions(TestCase):
             transaction.payment_processor.execute_transaction(transaction)
 
             sale_mock.assert_called_once_with({
-                'customer': {'first_name': payment_method.customer.name},
+                'customer': {'first_name': payment_method.customer.first_name,
+                             'last_name': payment_method.customer.last_name},
                 'amount': transaction.amount,
                 'billing': {'postal_code': None},
                 'options': {'store_in_vault': True,
@@ -114,24 +122,24 @@ class TestBraintreeTransactions(TestCase):
                 'payment_method_nonce': payment_method.nonce
             })
 
-            self.assertEqual(transaction.state, transaction.States.Settled)
+            assert transaction.state == transaction.States.Settled
 
             payment_method = transaction.payment_method
-            self.assertEqual(payment_method.token,
-                             self.transaction.paypal_details.token)
-            self.assertEqual(payment_method.data.get('details'), {
+            assert payment_method.token == self.transaction.paypal_details.token
+            assert payment_method.data.get('details') == {
                 'image_url': self.transaction.paypal_details.image_url,
                 'email': self.transaction.paypal_details.payer_email,
                 'type': self.transaction.payment_instrument_type,
-            })
-            self.assertEqual(payment_method.verified, True)
+            }
+            assert payment_method.verified == True
 
             customer = transaction.customer
-            self.assertEqual(customer.meta.get('braintree_id'),
-                             self.transaction.customer_details.id)
+            assert customer.meta.get('braintree_id') == \
+                self.transaction.customer_details.id
 
+    @pytest.mark.django_db
     def test_execute_transaction_with_token(self):
-        transaction = BraintreeTransactionFactory.create()
+        transaction = self.create_braintree_transaction()
         payment_method = transaction.payment_method
         payment_method.token = self.transaction.paypal_details.token
         payment_method.is_recurring = True
@@ -142,25 +150,24 @@ class TestBraintreeTransactions(TestCase):
             transaction.payment_processor.execute_transaction(transaction)
 
             sale_mock.assert_called_once_with({
-                'customer': {'first_name': payment_method.customer.name},
+                'customer_id': transaction.customer.meta['braintree_id'],
                 'amount': transaction.amount,
                 'billing': {'postal_code': None},
                 'options': {'submit_for_settlement': True},
                 'payment_method_token': payment_method.token
             })
 
-            self.assertEqual(transaction.state, transaction.States.Settled)
+            assert transaction.state == transaction.States.Settled
 
             payment_method = transaction.payment_method
-            self.assertEqual(payment_method.token,
-                             self.transaction.paypal_details.token)
-            self.assertEqual(payment_method.data.get('details'), {
+            assert payment_method.token == self.transaction.paypal_details.token
+            assert payment_method.data.get('details') == {
                 'image_url': self.transaction.paypal_details.image_url,
                 'email': self.transaction.paypal_details.payer_email,
                 'type': self.transaction.payment_instrument_type,
-            })
-            self.assertEqual(payment_method.verified, True)
+            }
+            assert payment_method.verified == True
 
             customer = transaction.customer
-            self.assertEqual(customer.meta.get('braintree_id'),
-                             self.transaction.customer_details.id)
+            assert customer.meta.get('braintree_id') == \
+                self.transaction.customer_details.id
