@@ -131,7 +131,7 @@ class TestBraintreeTransactions:
                 'email': self.transaction.paypal_details.payer_email,
                 'type': self.transaction.payment_instrument_type,
             }
-            assert payment_method.verified == True
+            assert payment_method.verified
 
             customer = transaction.customer
             assert customer.meta.get('braintree_id') == \
@@ -166,7 +166,7 @@ class TestBraintreeTransactions:
                 'email': self.transaction.paypal_details.payer_email,
                 'type': self.transaction.payment_instrument_type,
             }
-            assert payment_method.verified == True
+            assert payment_method.verified
 
             customer = transaction.customer
             assert customer.meta.get('braintree_id') == \
