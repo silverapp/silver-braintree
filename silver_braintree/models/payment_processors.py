@@ -33,24 +33,26 @@ from ..views import BraintreeTransactionView
 logger = logging.getLogger(__name__)
 
 
-class BraintreeTriggered(PaymentProcessorBase, TriggeredProcessorMixin):
-    reference = 'braintree_triggered'
+class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
     payment_method_class = BraintreePaymentMethod
     transaction_view_class = BraintreeTransactionView
     form_class = GenericTransactionForm
 
     _has_been_setup = False
 
+    def is_payment_method_recurring(self, payment_method):
+        raise NotImplementedError
+
     def __init__(self, *args, **kwargs):
-        if BraintreeTriggered._has_been_setup:
+        if self._has_been_setup:
             return
 
         environment = kwargs.pop('environment', None)
         braintree.Configuration.configure(environment, **kwargs)
 
-        BraintreeTriggered._has_been_setup = True
+        BraintreeTriggeredBase._has_been_setup = True
 
-        super(BraintreeTriggered, self).__init__(*args, **kwargs)
+        super(BraintreeTriggeredBase, self).__init__(*args, **kwargs)
 
     def client_token(self, customer):
         customer_braintree_id = customer.meta.get('braintree_id')
@@ -95,17 +97,12 @@ class BraintreeTriggered(PaymentProcessorBase, TriggeredProcessorMixin):
 
         payment_method.data['details'] = payment_method_details
 
-        try:
-            if payment_method.is_recurring:
-                if not payment_method.verified:
-                    payment_method.token = result_details.token
-                    payment_method.verified = True
-                    payment_method.save()
-            else:
-                payment_method.remove()
-        except TransitionNotAllowed as e:
-            # TODO handle this
-            pass
+        if self.is_payment_method_recurring(payment_method):
+            if not payment_method.verified:
+                payment_method.token = result_details.token
+                payment_method.verified = True
+        else:
+            payment_method.enabled = False
 
         payment_method.save()
 
@@ -175,7 +172,9 @@ class BraintreeTriggered(PaymentProcessorBase, TriggeredProcessorMixin):
         if payment_method.token:
             data = {'payment_method_token': payment_method.token}
         elif payment_method.nonce:
-            options.update({"store_in_vault": payment_method.is_recurring})
+            options.update({
+                "store_in_vault": self.is_payment_method_recurring(payment_method)
+            })
             data = {'payment_method_nonce': payment_method.nonce}
         else:
             logger.warning('Token or nonce not found when charging '
@@ -301,3 +300,17 @@ class BraintreeTriggered(PaymentProcessorBase, TriggeredProcessorMixin):
                                 'transaction_uuid': transaction.uuid
                            })
             return False
+
+
+class BraintreeTriggered(BraintreeTriggeredBase):
+    reference = 'braintree_triggered'
+
+    def is_payment_method_recurring(self, payment_method):
+        return False
+
+
+class BraintreeTriggeredRecurring(BraintreeTriggeredBase):
+    reference = 'braintree_triggered_recurring'
+
+    def is_payment_method_recurring(self, payment_method):
+        return True

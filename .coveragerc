@@ -1,0 +1,7 @@
+[run]
+omit =
+	tests/*
+	silver_braintree/migrations/*
+	silver_braintree/__init__.py
+	silver_braintree/models/__init__.py
+	silver_braintree/api/__init__.py

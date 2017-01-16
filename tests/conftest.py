@@ -35,6 +35,15 @@ settings.configure(
             },
             'display_name': 'Braintree'
         },
+        'silver_braintree.BraintreeTriggeredRecurring': {
+            'setup_data': {
+                'environment': braintree.Environment.Sandbox,
+                'merchant_id': "your-merchand-id-here",
+                'public_key': "your-public-id-here",
+                'private_key': "your-private-id-here"
+            },
+            'display_name': 'Braintree Recurring'
+        },
     },
     INSTALLED_APPS=('django.contrib.auth',
                     'django.contrib.contenttypes',
@@ -44,7 +53,7 @@ settings.configure(
                     'silver_braintree',),
     CACHES={
         'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
             'LOCATION': 'unique-snowflake',
         }
     }

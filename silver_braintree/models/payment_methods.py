@@ -54,14 +54,6 @@ class BraintreePaymentMethod(PaymentMethod):
         self.data['nonce'] = self.encrypt_data(value)
 
     @property
-    def is_recurring(self):
-        return self.data.get('is_recurring', False)
-
-    @is_recurring.setter
-    def is_recurring(self, value):
-        self.data['is_recurring'] = value
-
-    @property
     def is_usable(self):
         if not (self.token or self.nonce):
             return False

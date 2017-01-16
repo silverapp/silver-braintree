@@ -19,23 +19,14 @@ from silver.views import GenericTransactionView
 
 
 class BraintreeTransactionView(GenericTransactionView):
-    def render_template(self):
-        client_token = self.transaction.payment_processor.client_token(
-            self.transaction.customer
+    def get_context_data(self):
+        return super(BraintreeTransactionView, self).get_context_data().update(
+            {
+                'client_token': self.transaction.payment_processor.client_token(
+                    self.transaction.customer
+                )
+            }
         )
-
-        context = {
-            'payment_method': self.transaction.payment_method,
-            'transaction': self.transaction,
-            'document': self.transaction.document,
-            'customer': self.transaction.customer,
-            'provider': self.transaction.provider,
-            'entries': list(self.transaction.document._entries),
-            'form': self.form,
-            'client_token': client_token
-        }
-
-        return self.template.render(context=context)
 
     def post(self, request):
         payment_method_nonce = request.POST.get('payment_method_nonce')
