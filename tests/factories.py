@@ -11,30 +11,34 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from silver_braintree.models import BraintreeTriggered
+import factory
 
 from silver.models import PaymentProcessorManager
-from silver.tests.factories import TransactionFactory, PaymentMethodFactory
+from silver.tests.factories import TransactionFactory, CustomerFactory
+
+from silver_braintree.models import BraintreePaymentMethod, BraintreeTriggered
 
 
-class BraintreePaymentMethodFactory(PaymentMethodFactory):
-    @classmethod
-    def _create(cls, model_class, *args, **kwargs):
-        kwargs['payment_processor'] = PaymentProcessorManager.get_instance(
-            BraintreeTriggered.reference
-        )
+class BraintreePaymentMethodFactory(factory.DjangoModelFactory):
+    class Meta:
+        model = BraintreePaymentMethod
 
-        return super(BraintreePaymentMethodFactory, cls)._create(
-            model_class, *args, **kwargs
-        )
+    payment_processor = PaymentProcessorManager.get_instance(
+        BraintreeTriggered.reference
+    )
+    customer = factory.SubFactory(CustomerFactory)
 
 
 class BraintreeTransactionFactory(TransactionFactory):
     @classmethod
     def _create(cls, model_class, *args, **kwargs):
         # overriding the payment_method field didn't work
-        kwargs['payment_method'] = BraintreePaymentMethodFactory.create()
+        kwargs['payment_method'] = BraintreePaymentMethodFactory.create(
+            payment_processor=kwargs.get('payment_processor',
+                                         PaymentProcessorManager.get_instance(
+                                             BraintreeTriggered.reference
+                                         ))
+        )
 
         return super(BraintreeTransactionFactory, cls)._create(
             model_class, *args, **kwargs

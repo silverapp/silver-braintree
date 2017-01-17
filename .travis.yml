@@ -1,9 +1,8 @@
 language: python
 python:
   - "2.7"
-  - "3.5"
 cache: pip
 install:
   - pip install -U -r requirements.test.txt
 script:
-  - python manage.py test -v2
+  - pytest --cov-report term-missing --cov=silver_braintree tests/

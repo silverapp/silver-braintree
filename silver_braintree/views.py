@@ -19,23 +19,14 @@ from silver.views import GenericTransactionView
 
 
 class BraintreeTransactionView(GenericTransactionView):
-    def render_template(self):
-        client_token = self.transaction.payment_processor.client_token(
-            self.transaction.customer
+    def get_context_data(self):
+        return super(BraintreeTransactionView, self).get_context_data().update(
+            {
+                'client_token': self.transaction.payment_processor.client_token(
+                    self.transaction.customer
+                )
+            }
         )
-
-        context = {
-            'payment_method': self.transaction.payment_method,
-            'transaction': self.transaction,
-            'document': self.transaction.document,
-            'customer': self.transaction.customer,
-            'provider': self.transaction.provider,
-            'entries': list(self.transaction.document._entries),
-            'form': self.form,
-            'client_token': client_token
-        }
-
-        return self.template.render(context=context)
 
     def post(self, request):
         payment_method_nonce = request.POST.get('payment_method_nonce')
@@ -49,21 +40,13 @@ class BraintreeTransactionView(GenericTransactionView):
             return HttpResponseBadRequest(message)
 
         # initialize the payment method
-        initial_data = {
-            'nonce': payment_method_nonce,
-            'is_recurring': request.POST.get('is_recurring', False),
-            'billing_details': {
-                'cardholder_name': request.POST.get('cardholder_name'),
-                'postal_code': request.POST.get('postal_code')
-            }
+        details = {
+            'postal_code': request.POST.get('postal_code')
         }
 
-        try:
-            payment_method.initialize_unverified(initial_data)
-            payment_method.save()
-        except TransitionNotAllowed as e:
-            # TODO handle this
-            return HttpResponse('Something went wrong!')
+        payment_method.nonce = payment_method_nonce
+        payment_method.update_details(details)
+        payment_method.save()
 
         # manage the transaction
         payment_processor = payment_method.payment_processor

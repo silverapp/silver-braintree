@@ -19,6 +19,27 @@ from silver.models import PaymentMethod
 
 
 class BraintreePaymentMethod(PaymentMethod):
+    """
+        data field structure
+        {
+            'nonce': 'some-nonce', (encrypted, deleted if token exists)
+            'token': 'some-token', (encrypted)
+            'braintree_id': 'transaction-id-given-by-braintree',
+            'status': 'status-given-by-braintree' (does not exist if
+                                                   Transaction.state is Initial)
+            'details': {
+                - common -
+                'type': Types.PayPal | Types.CreditCard,
+                'image_url': 'payment-processor-icon-url-given-by-braintree',
+                - PayPal -
+                'email': 'some@ema.il' (PayPal account email)
+                - CreditCard -
+                'last_4': '1234' (last 4 digits from the credit card number)
+                'card_type': e.g. 'Visa',
+                'postal_code': '41234Y' (if provided from template)
+            }
+        }
+    """
     class Meta:
         proxy = True
 
@@ -54,19 +75,24 @@ class BraintreePaymentMethod(PaymentMethod):
         self.data['nonce'] = self.encrypt_data(value)
 
     @property
-    def is_recurring(self):
-        return self.data.get('is_recurring', False)
-
-    @is_recurring.setter
-    def is_recurring(self, value):
-        self.data['is_recurring'] = value
-
-    @property
     def is_usable(self):
+        if not self.enabled:
+            return False
+
         if not (self.token or self.nonce):
             return False
 
         return True
+
+    def update_details(self, details):
+        if 'details' not in self.data:
+            self.data['details'] = details
+        else:
+            self.data['details'].update(details)
+
+    @property
+    def details(self):
+        return self.data.get('details')
 
     @property
     def public_data(self):
