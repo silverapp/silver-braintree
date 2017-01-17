@@ -18,12 +18,12 @@
 import os
 from setuptools import setup, find_packages
 
-import silver_braintree
-
 install_requires = [line.strip()
                     for line in open("requirements.txt").readlines()
                     if not line.strip().startswith('#')]
 install_requires = [l for l in install_requires if l != '']
+
+__version__ = '0.1.0'
 
 
 def read(fname):
@@ -34,7 +34,7 @@ def read(fname):
 
 setup(
     name="silver-braintree",
-    version=silver_payu.__version__,
+    version=__version__,
     description=read('DESCRIPTION'),
     long_description=read('README.md'),
     license='Apache 2.0',
@@ -45,6 +45,7 @@ setup(
     url='https://github.com/silverapp/silver-braintree',
     packages=find_packages(),
     include_package_data=True,
+    dependency_links = ['http://github.com/silverapp/silver/tarball/master#egg=silver'],
     install_requires=install_requires,
     classifiers=[
         'Environment :: Web Environment',
