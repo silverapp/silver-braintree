@@ -34,8 +34,9 @@ class BraintreePaymentMethod(PaymentMethod):
                 - PayPal -
                 'email': 'some@ema.il' (PayPal account email)
                 - CreditCard -
-                'last_4' : '1234' (last 4 digits from the credit card number)
-                'card_type': e.g. 'Visa'
+                'last_4': '1234' (last 4 digits from the credit card number)
+                'card_type': e.g. 'Visa',
+                'postal_code': '41234Y' (if provided from template)
             }
         }
     """
@@ -75,10 +76,23 @@ class BraintreePaymentMethod(PaymentMethod):
 
     @property
     def is_usable(self):
+        if not self.enabled:
+            return False
+
         if not (self.token or self.nonce):
             return False
 
         return True
+
+    def update_details(self, details):
+        if 'details' not in self.data:
+            self.data['details'] = details
+        else:
+            self.data['details'].update(details)
+
+    @property
+    def details(self):
+        return self.data.get('details')
 
     @property
     def public_data(self):

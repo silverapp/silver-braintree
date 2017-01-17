@@ -40,21 +40,13 @@ class BraintreeTransactionView(GenericTransactionView):
             return HttpResponseBadRequest(message)
 
         # initialize the payment method
-        initial_data = {
-            'nonce': payment_method_nonce,
-            'is_recurring': request.POST.get('is_recurring', False),
-            'billing_details': {
-                'cardholder_name': request.POST.get('cardholder_name'),
-                'postal_code': request.POST.get('postal_code')
-            }
+        details = {
+            'postal_code': request.POST.get('postal_code')
         }
 
-        try:
-            payment_method.initialize_unverified(initial_data)
-            payment_method.save()
-        except TransitionNotAllowed as e:
-            # TODO handle this
-            return HttpResponse('Something went wrong!')
+        payment_method.nonce = payment_method_nonce
+        payment_method.update_details(details)
+        payment_method.save()
 
         # manage the transaction
         payment_processor = payment_method.payment_processor

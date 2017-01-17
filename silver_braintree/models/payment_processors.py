@@ -95,7 +95,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
                 'last_4': result_details.last_4,
             })
 
-        payment_method.data['details'] = payment_method_details
+        payment_method.update_details(payment_method_details)
 
         if self.is_payment_method_recurring(payment_method):
             if result_details.token:
@@ -224,6 +224,9 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
                 'card_verification': (result.credit_card_verification if errors
                                       else None)
             })
+
+            transaction.data['error_codes'] = errors
+            transaction.save()
 
             return False
 
