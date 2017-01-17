@@ -98,8 +98,9 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
         payment_method.data['details'] = payment_method_details
 
         if self.is_payment_method_recurring(payment_method):
-            if not payment_method.verified:
+            if result_details.token:
                 payment_method.token = result_details.token
+                payment_method.data.pop('nonce', None)
                 payment_method.verified = True
         else:
             payment_method.enabled = False

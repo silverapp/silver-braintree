@@ -44,6 +44,9 @@ settings.configure(
             },
             'display_name': 'Braintree Recurring'
         },
+        'silver.models.payment_processors.manual.ManualProcessor': {
+            'display_name': 'Manual'
+        }
     },
     INSTALLED_APPS=('django.contrib.auth',
                     'django.contrib.contenttypes',

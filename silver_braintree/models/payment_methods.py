@@ -19,6 +19,26 @@ from silver.models import PaymentMethod
 
 
 class BraintreePaymentMethod(PaymentMethod):
+    """
+        data field structure
+        {
+            'nonce': 'some-nonce', (encrypted, deleted if token exists)
+            'token': 'some-token', (encrypted)
+            'braintree_id': 'transaction-id-given-by-braintree',
+            'status': 'status-given-by-braintree' (does not exist if
+                                                   Transaction.state is Initial)
+            'details': {
+                - common -
+                'type': Types.PayPal | Types.CreditCard,
+                'image_url': 'payment-processor-icon-url-given-by-braintree',
+                - PayPal -
+                'email': 'some@ema.il' (PayPal account email)
+                - CreditCard -
+                'last_4' : '1234' (last 4 digits from the credit card number)
+                'card_type': e.g. 'Visa'
+            }
+        }
+    """
     class Meta:
         proxy = True
 

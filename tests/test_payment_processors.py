@@ -14,7 +14,6 @@
 
 import pytest
 from django.core.cache import cache
-from django_dynamic_fixture import G
 from mock import patch, MagicMock
 from braintree import Transaction as BraintreeTransaction
 
@@ -24,6 +23,7 @@ from silver_braintree import BraintreeTriggeredRecurring
 
 from silver_braintree.models import BraintreePaymentMethod
 from silver_braintree.models import BraintreeTriggered
+from tests.factories import BraintreeTransactionFactory
 
 
 class TestBraintreeTransactions:
@@ -58,23 +58,9 @@ class TestBraintreeTransactions:
         BraintreeTriggered._has_been_setup = False
         PaymentProcessorManager.unregister(BraintreeTriggered)
 
-    def create_braintree_payment_method(self, *args, **kwargs):
-        payment_processor = kwargs.pop(
-            'payment_processor',
-            PaymentProcessorManager.get_instance(BraintreeTriggered.reference)
-        )
-        return G(BraintreePaymentMethod, payment_processor=payment_processor,
-                 *args, **kwargs)
-
-    def create_braintree_transaction(self, *args, **kwargs):
-        payment_method = kwargs.pop('payment_method', None)
-        if not payment_method:
-            payment_method = self.create_braintree_payment_method()
-        return G(Transaction, payment_method=payment_method, *args, **kwargs)
-
     @pytest.mark.django_db
     def test_update_status_transaction_settle(self):
-        transaction = self.create_braintree_transaction(
+        transaction = BraintreeTransactionFactory.create(
             state=Transaction.States.Pending, data={
                 'braintree_id': 'beertrain'
             }
@@ -90,14 +76,16 @@ class TestBraintreeTransactions:
 
     @pytest.mark.django_db
     def test_update_status_transaction_fail(self):
-        self.transaction.status = BraintreeTransaction.Status.ProcessorDeclined
-        transaction = self.create_braintree_transaction(
+        transaction = BraintreeTransactionFactory.create(
             state=Transaction.States.Pending, data={
                 'braintree_id': 'beertrain'
             }
         )
         with patch('braintree.Transaction.find') as find_mock:
             find_mock.return_value = self.transaction
+            # fail status from braintree
+            self.transaction.status = BraintreeTransaction.Status.ProcessorDeclined
+
             transaction.payment_processor.update_transaction_status(transaction)
 
             find_mock.assert_called_once_with('beertrain')
@@ -106,7 +94,7 @@ class TestBraintreeTransactions:
 
     @pytest.mark.django_db
     def test_execute_transaction_with_nonce_nonrecurring(self):
-        transaction = self.create_braintree_transaction()
+        transaction = BraintreeTransactionFactory.create()
         payment_method = transaction.payment_method
         payment_method.nonce = 'some-nonce'
         payment_method.is_recurring = True
@@ -117,10 +105,12 @@ class TestBraintreeTransactions:
             transaction.payment_processor.execute_transaction(transaction)
 
             sale_mock.assert_called_once_with({
+                # new customer
                 'customer': {'first_name': payment_method.customer.first_name,
                              'last_name': payment_method.customer.last_name},
                 'amount': transaction.amount,
                 'billing': {'postal_code': None},
+                # don't store payment method in vault
                 'options': {'store_in_vault': False,
                             'submit_for_settlement': True},
                 'payment_method_nonce': payment_method.nonce
@@ -143,32 +133,32 @@ class TestBraintreeTransactions:
 
     @pytest.mark.django_db
     def test_execute_transaction_with_token_recurring(self):
-        payment_method = self.create_braintree_payment_method(
+        transaction = BraintreeTransactionFactory.create(
             payment_processor=PaymentProcessorManager.get_instance(
                 BraintreeTriggeredRecurring.reference
             )
         )
+
+        payment_method = transaction.payment_method
         payment_method.token = 'kento'
         payment_method.is_recurring = True
         payment_method.save()
 
-        transaction = self.create_braintree_transaction(
-            payment_method=payment_method
-        )
         customer = payment_method.customer
         customer.meta['braintree_id'] = 'somethingelse'
         customer.save()
-        print('PK', customer.pk)
 
         with patch('braintree.Transaction.sale') as sale_mock:
             sale_mock.return_value = self.result
             transaction.payment_processor.execute_transaction(transaction)
 
             sale_mock.assert_called_once_with({
+                # existing customer in vault
                 'customer_id': customer.meta['braintree_id'],
                 'amount': transaction.amount,
                 'billing': {'postal_code': None},
                 'options': {'submit_for_settlement': True},
+                # existing token
                 'payment_method_token': payment_method.token
             })
 
@@ -185,35 +175,32 @@ class TestBraintreeTransactions:
 
     @pytest.mark.django_db
     def test_execute_transaction_with_nonce_recurring(self):
-        print Customer.objects.all()
-        cache.clear()
-        payment_method = self.create_braintree_payment_method(
+        transaction = BraintreeTransactionFactory.create(
             payment_processor=PaymentProcessorManager.get_instance(
                 BraintreeTriggeredRecurring.reference
             )
         )
+
+        payment_method = transaction.payment_method
         payment_method.nonce = 'some-nonce'
         payment_method.is_recurring = True
         payment_method.save()
-        print Customer.objects.all()
-        transaction = self.create_braintree_transaction(
-            payment_method=payment_method
-        )
 
-        print Transaction.objects.all(), Customer.objects.all()
-        print payment_method.customer, payment_method.customer.meta
-        print('PK', payment_method.customer.pk)
+        payment_method.customer.refresh_from_db()
 
         with patch('braintree.Transaction.sale') as sale_mock:
             sale_mock.return_value = self.result
             transaction.payment_processor.execute_transaction(transaction)
 
             sale_mock.assert_called_once_with({
+                # create new customer in vault
                 'customer': {'first_name': payment_method.customer.first_name,
                              'last_name': payment_method.customer.last_name},
                 'amount': transaction.amount,
                 'billing': {'postal_code': None},
-                'options': {'submit_for_settlement': True},
+                # store the payment method
+                'options': {'store_in_vault': True,
+                            'submit_for_settlement': True},
                 'payment_method_nonce': payment_method.nonce
             })
 
