@@ -20,6 +20,7 @@ from rest_framework.response import Response
 
 from silver.models import Customer
 from silver.models import Transaction
+from silver.payment_processors import get_instance
 
 from silver_braintree.models import BraintreeTriggered
 
@@ -28,13 +29,14 @@ from silver_braintree.models import BraintreeTriggered
 def client_token(request, transaction_uuid=None):
     transaction = get_object_or_None(Transaction, id=transaction_uuid)
 
-    if not isinstance(transaction.payment_processor, BraintreeTriggered):
+    payment_processor = get_instance(transaction.payment_processor)
+    if not isinstance(payment_processor, BraintreeTriggered):
         return Response(
             {'detail': 'Transaction is not a Braintree transaction.'},
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    token = transaction.payment_processor.client_token(transaction.customer)
+    token = payment_processor.client_token(transaction.customer)
 
     if not token:
         return Response({'detail': 'Braintree miscommunication.'},

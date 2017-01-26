@@ -11,20 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from django_fsm import TransitionNotAllowed
-from django.http import HttpResponse, HttpResponseBadRequest
-
-from silver.views import GenericTransactionView
+from silver.payment_processors import get_instance
+from silver.payment_processors.views import GenericTransactionView
 from silver.utils.payments import get_payment_complete_url
 
 
 class BraintreeTransactionView(GenericTransactionView):
     def get_context_data(self):
         context_data = super(BraintreeTransactionView, self).get_context_data()
+        payment_processor = get_instance(self.transaction.payment_processor)
         context_data.update(
             {
-                'client_token': self.transaction.payment_processor.client_token(
+                'client_token': payment_processor.client_token(
                     self.transaction.customer
                 ),
                 'complete_url': get_payment_complete_url(self.transaction,

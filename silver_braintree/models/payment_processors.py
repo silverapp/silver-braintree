@@ -20,11 +20,10 @@ from braintree.exceptions import (AuthenticationError, AuthorizationError,
                                   UpgradeRequiredError)
 from django_fsm import TransitionNotAllowed
 
-from django.utils import timezone
 
 from silver.forms import GenericTransactionForm
-from silver.models.payment_processors.base import PaymentProcessorBase
-from silver.models.payment_processors.mixins import TriggeredProcessorMixin
+from silver.payment_processors import PaymentProcessorBase, get_instance
+from silver.payment_processors.mixins import TriggeredProcessorMixin
 
 from .payment_methods import BraintreePaymentMethod
 from ..views import BraintreeTransactionView
@@ -43,7 +42,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
     def is_payment_method_recurring(self, payment_method):
         raise NotImplementedError
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, name, *args, **kwargs):
         if self._has_been_setup:
             return
 
@@ -52,7 +51,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
 
         BraintreeTriggeredBase._has_been_setup = True
 
-        super(BraintreeTriggeredBase, self).__init__(*args, **kwargs)
+        super(BraintreeTriggeredBase, self).__init__(name)
 
     def client_token(self, customer):
         customer_braintree_id = customer.meta.get('braintree_id')
@@ -265,7 +264,8 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
         :return: True on success, False on failure.
         """
 
-        if not transaction.payment_processor == self:
+        payment_processor = get_instance(transaction.payment_processor)
+        if not payment_processor == self:
             return False
 
         if transaction.state != transaction.States.Initial:
@@ -279,7 +279,8 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
         :return: True on success, False on failure.
         """
 
-        if not transaction.payment_processor == self:
+        payment_processor = get_instance(transaction.payment_processor)
+        if not payment_processor == self:
             return False
 
         if transaction.state != transaction.States.Pending:
@@ -332,7 +333,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
         payment_method.save()
 
         # manage the transaction
-        payment_processor = payment_method.payment_processor
+        payment_processor = get_instance(payment_method.payment_processor)
 
         if not payment_processor.execute_transaction(transaction):
             try:
@@ -345,8 +346,6 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
 
 
 class BraintreeTriggered(BraintreeTriggeredBase):
-    reference = 'braintree_triggered'
-
     def is_payment_method_recurring(self, payment_method):
         return False
 

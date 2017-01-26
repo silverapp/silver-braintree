@@ -26,31 +26,35 @@ settings.configure(
     },
     PAYMENT_METHOD_SECRET=b'MOW_x1k-ayes3KqnFHNZUxvKipC8iLjxiczEN76TIEA=',
     PAYMENT_PROCESSORS={
-        'silver_braintree.BraintreeTriggered': {
+        'BraintreeTriggered': {
             'setup_data': {
                 'environment': braintree.Environment.Sandbox,
                 'merchant_id': "your-merchand-id-here",
                 'public_key': "your-public-id-here",
                 'private_key': "your-private-id-here"
             },
-            'display_name': 'Braintree'
+            'class': 'silver_braintree.BraintreeTriggered',
         },
-        'silver_braintree.BraintreeTriggeredRecurring': {
+        'BraintreeTriggeredRecurring': {
             'setup_data': {
                 'environment': braintree.Environment.Sandbox,
                 'merchant_id': "your-merchand-id-here",
                 'public_key': "your-public-id-here",
                 'private_key': "your-private-id-here"
             },
-            'display_name': 'Braintree Recurring'
+            'class': 'silver_braintree.BraintreeTriggeredRecurring'
         },
-        'silver.models.payment_processors.manual.ManualProcessor': {
-            'display_name': 'Manual'
+        'Manual': {
+            'class': 'silver.models.payment_processors.manual.ManualProcessor'
         }
     },
-    INSTALLED_APPS=('django.contrib.auth',
+    INSTALLED_APPS=(
+                    'dal',
+                    'dal_select2',
+                    'django.contrib.auth',
                     'django.contrib.contenttypes',
                     'django.contrib.sessions',
+                    'django.contrib.staticfiles',
                     'django.contrib.admin',
                     'silver',
                     'silver_braintree',),
@@ -59,7 +63,9 @@ settings.configure(
             'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
             'LOCATION': 'unique-snowflake',
         }
-    }
+    },
+    USE_TZ=True,
+    STATIC_URL='/static/'
 )
 
 django.setup()

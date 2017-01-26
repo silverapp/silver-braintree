@@ -13,7 +13,6 @@
 # limitations under the License.
 import factory
 
-from silver.models import PaymentProcessorManager
 from silver.tests.factories import TransactionFactory, CustomerFactory
 
 from silver_braintree.models import BraintreePaymentMethod, BraintreeTriggered
@@ -23,23 +22,10 @@ class BraintreePaymentMethodFactory(factory.DjangoModelFactory):
     class Meta:
         model = BraintreePaymentMethod
 
-    payment_processor = PaymentProcessorManager.get_instance(
-        BraintreeTriggered.reference
-    )
+    payment_processor = 'BraintreeTriggered'
     customer = factory.SubFactory(CustomerFactory)
 
 
 class BraintreeTransactionFactory(TransactionFactory):
-    @classmethod
-    def _create(cls, model_class, *args, **kwargs):
-        # overriding the payment_method field didn't work
-        kwargs['payment_method'] = BraintreePaymentMethodFactory.create(
-            payment_processor=kwargs.get('payment_processor',
-                                         PaymentProcessorManager.get_instance(
-                                             BraintreeTriggered.reference
-                                         ))
-        )
+    payment_method = factory.SubFactory(BraintreePaymentMethodFactory)
 
-        return super(BraintreeTransactionFactory, cls)._create(
-            model_class, *args, **kwargs
-        )
