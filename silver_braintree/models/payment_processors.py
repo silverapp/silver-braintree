@@ -228,6 +228,10 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
             transaction.data['error_codes'] = errors
             transaction.save()
 
+            if not payment_method.token:
+                payment_method.enabled = False
+                payment_method.save()
+
             return False
 
         self._update_customer(customer, result.transaction.customer_details)
@@ -304,6 +308,40 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
                                 'transaction_uuid': transaction.uuid
                            })
             return False
+
+    def handle_transaction_response(self, transaction, request):
+        payment_method_nonce = request.POST.get('payment_method_nonce')
+        payment_method = transaction.payment_method
+
+        if payment_method.nonce or not payment_method_nonce:
+            try:
+                transaction.fail()
+                transaction.save()
+            except TransitionNotAllowed:
+                pass
+            finally:
+                return
+
+        # initialize the payment method
+        details = {
+            'postal_code': request.POST.get('postal_code')
+        }
+
+        payment_method.nonce = payment_method_nonce
+        payment_method.update_details(details)
+        payment_method.save()
+
+        # manage the transaction
+        payment_processor = payment_method.payment_processor
+
+        if not payment_processor.execute_transaction(transaction):
+            try:
+                transaction.fail()
+                transaction.save()
+            except TransitionNotAllowed:
+                pass
+            finally:
+                return
 
 
 class BraintreeTriggered(BraintreeTriggeredBase):

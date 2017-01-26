@@ -1,10 +1,8 @@
 {% load staticfiles %}
 
-<!-- Load the client component. -->
-<script src="https://js.braintreegateway.com/web/3.6.3/js/client.min.js"></script>
-
-<!-- Load the PayPal component. -->
-<script src="https://js.braintreegateway.com/web/3.6.3/js/paypal.min.js"></script>
+<form id="nonce-form" action="{{ complete_url }}" method="POST">
+    <input id="nonce-field" name="payment_method_nonce" type="text" hidden="hidden">
+</form>
 
 <script>
 var paypalButton = document.querySelector('.paypal-button');
@@ -61,15 +59,9 @@ braintree.client.create({
         paypalButton.setAttribute('disabled', true);
         console.log('Got a nonce! You should submit this to your server.');
         console.log(payload.nonce);
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', window.location.href, true);
-        xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-        xhr.onload = function () {
-            // do something to response
-            console.log(this.responseText);
-        };
-        xhr.send('payment_method_nonce='+payload.nonce);
 
+        document.getElementById("nonce-field").value = payload.nonce;
+        document.getElementById("nonce-form").submit();
       });
 
     }, false);

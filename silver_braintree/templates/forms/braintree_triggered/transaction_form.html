@@ -1,20 +1,27 @@
 {% extends 'forms/transaction_form.html' %}
 
-{% block payment_processor %}
+{% block extrahead %}
+<!-- Load the client component. -->
+<script src="https://js.braintreegateway.com/web/3.6.3/js/client.min.js"></script>
+<!-- Load the PayPal component. -->
+<script src="https://js.braintreegateway.com/web/3.6.3/js/paypal.min.js"></script>
 {% endblock %}
 
 {% block form %}
-    {{ block.super }}
-    <script src="https://www.paypalobjects.com/api/button.js?"
-         data-merchant="braintree"
-         data-id="paypal-button"
-         data-button="checkout"
-         data-color="gold"
-         data-size="medium"
-         data-shape="pill"
-         data-button_type="submit"
-         data-button_disabled="false"
-     ></script>
+    <div style="vertical-align: middle; text-align: center; margin: auto; align: center;">
+        <div style="margin: auto;">
+            <script src="https://www.paypalobjects.com/api/button.js?"
+                 data-merchant="braintree"
+                 data-id="paypal-button"
+                 data-button="checkout"
+                 data-color="gold"
+                 data-size="medium"
+                 data-shape="pill"
+                 data-button_type="submit"
+                 data-button_disabled="false"
+             ></script>
+        </div>
+    </div>
     <!-- Configuration options:
       data-color: "blue", "gold", "silver"
       data-size: "tiny", "small", "medium"

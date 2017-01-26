@@ -16,42 +16,20 @@ from django_fsm import TransitionNotAllowed
 from django.http import HttpResponse, HttpResponseBadRequest
 
 from silver.views import GenericTransactionView
+from silver.utils.payments import get_payment_complete_url
 
 
 class BraintreeTransactionView(GenericTransactionView):
     def get_context_data(self):
-        return super(BraintreeTransactionView, self).get_context_data().update(
+        context_data = super(BraintreeTransactionView, self).get_context_data()
+        context_data.update(
             {
                 'client_token': self.transaction.payment_processor.client_token(
                     self.transaction.customer
-                )
+                ),
+                'complete_url': get_payment_complete_url(self.transaction,
+                                                         self.request)
             }
         )
 
-    def post(self, request):
-        payment_method_nonce = request.POST.get('payment_method_nonce')
-        if not payment_method_nonce:
-            message = 'The payment method nonce was not provided.'
-            return HttpResponseBadRequest(message)
-
-        payment_method = self.transaction.payment_method
-        if payment_method.nonce:
-            message = 'The payment method already has a payment method nonce.'
-            return HttpResponseBadRequest(message)
-
-        # initialize the payment method
-        details = {
-            'postal_code': request.POST.get('postal_code')
-        }
-
-        payment_method.nonce = payment_method_nonce
-        payment_method.update_details(details)
-        payment_method.save()
-
-        # manage the transaction
-        payment_processor = payment_method.payment_processor
-
-        if not payment_processor.execute_transaction(self.transaction):
-            return HttpResponse('Something went wrong!')
-
-        return HttpResponse('All is well!')
+        return context_data
