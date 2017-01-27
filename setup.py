@@ -18,11 +18,7 @@
 import os
 from setuptools import setup, find_packages
 
-install_requires = [line.strip()
-                    for line in open("requirements.txt").readlines()
-                    if not line.strip().startswith('#')]
-install_requires = [l for l in install_requires if l != '']
-
+install_requires = ['braintree']
 __version__ = '0.1.0'
 
 
