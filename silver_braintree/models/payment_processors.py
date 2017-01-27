@@ -21,8 +21,8 @@ from braintree.exceptions import (AuthenticationError, AuthorizationError,
 from django_fsm import TransitionNotAllowed
 
 
-from silver.forms import GenericTransactionForm
 from silver.payment_processors import PaymentProcessorBase, get_instance
+from silver.payment_processors.forms import GenericTransactionForm
 from silver.payment_processors.mixins import TriggeredProcessorMixin
 
 from .payment_methods import BraintreePaymentMethod

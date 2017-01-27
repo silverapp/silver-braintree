@@ -18,7 +18,6 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from silver.models import Customer
 from silver.models import Transaction
 from silver.payment_processors import get_instance
 
