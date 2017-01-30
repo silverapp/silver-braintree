@@ -36,6 +36,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
     payment_method_class = BraintreePaymentMethod
     transaction_view_class = BraintreeTransactionView
     form_class = GenericTransactionForm
+    template_slug = 'braintree'
 
     _has_been_setup = False
 
