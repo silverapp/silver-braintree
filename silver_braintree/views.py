@@ -13,21 +13,14 @@
 # limitations under the License.
 from silver.payment_processors import get_instance
 from silver.payment_processors.views import GenericTransactionView
-from silver.utils.payments import get_payment_complete_url
 
 
 class BraintreeTransactionView(GenericTransactionView):
     def get_context_data(self):
         context_data = super(BraintreeTransactionView, self).get_context_data()
         payment_processor = get_instance(self.transaction.payment_processor)
-        context_data.update(
-            {
-                'client_token': payment_processor.client_token(
-                    self.transaction.customer
-                ),
-                'complete_url': get_payment_complete_url(self.transaction,
-                                                         self.request)
-            }
+        context_data['client_token'] = payment_processor.client_token(
+                self.transaction.customer
         )
 
         return context_data
