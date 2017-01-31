@@ -1,6 +1,6 @@
 {% load staticfiles %}
 
-<form id="nonce-form" action="{{ payment_complete_url }}" method="POST">
+<form id="nonce-form" action="{{ payment_complete_url }}" method="POST" style="display:none;">
     <input id="nonce-field" name="payment_method_nonce" type="text" hidden="hidden">
 </form>
 

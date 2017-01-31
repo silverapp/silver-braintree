@@ -29,10 +29,26 @@
       data-button_disabled: "false", "true"
       data-button_type: "submit", "button"
     --->
-    {% include "forms/braintree_triggered/braintree_ui.html" %}
+    {% include "forms/braintree/braintree_ui.html" %}
 {% endblock %}
 
 {% block transaction %}
     {{ block.super }}
     {{ payment_method.data.details }}
+{% endblock %}
+
+{% block document_details %}
+  <table cellspacing="0" cellpadding="0">
+    <tr>
+
+      <td colspan="5">
+        <h4>Amount paid</h4>
+      </td>
+
+      <td>
+        <h4>{{ transaction.amount }} {{ transaction.currency }}</h4>
+      </td>
+
+    </tr>
+  </table>
 {% endblock %}
