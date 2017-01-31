@@ -103,7 +103,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
                 payment_method.data.pop('nonce', None)
                 payment_method.verified = True
         else:
-            payment_method.enabled = False
+            payment_method.canceled = True
 
         payment_method.save()
 
@@ -229,7 +229,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
             transaction.save()
 
             if not payment_method.token:
-                payment_method.enabled = False
+                payment_method.canceled = True
                 payment_method.save()
 
             return False
