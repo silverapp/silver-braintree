@@ -74,7 +74,7 @@ class TestBraintreeTransactions:
         with patch('braintree.Transaction.find') as find_mock:
             find_mock.return_value = self.transaction
             payment_processor = get_instance(transaction.payment_processor)
-            payment_processor.update_transaction_status(transaction)
+            payment_processor.fetch_transaction_status(transaction)
 
             find_mock.assert_called_once_with('beertrain')
 
@@ -94,7 +94,7 @@ class TestBraintreeTransactions:
             self.transaction.status = BraintreeTransaction.Status.ProcessorDeclined
 
             payment_processor = get_instance(transaction.payment_processor)
-            payment_processor.update_transaction_status(transaction)
+            payment_processor.fetch_transaction_status(transaction)
 
             find_mock.assert_called_once_with('beertrain')
 
@@ -282,7 +282,7 @@ class TestBraintreeTransactions:
                 self.transaction.customer_details.id
 
     @pytest.mark.django_db
-    def test_execute_transaction_with_disabled_payment_method(self):
+    def test_execute_transaction_with_canceled_payment_method(self):
         transaction = BraintreeTransactionFactory.create(
             payment_processor='BraintreeTriggered'
         )
@@ -290,7 +290,7 @@ class TestBraintreeTransactions:
         nonce = 'some-nonce'
         payment_method = transaction.payment_method
         payment_method.nonce = nonce
-        payment_method.enabled = False
+        payment_method.canceled = True
         payment_method.save()
 
         with patch('braintree.Transaction.sale') as sale_mock:
