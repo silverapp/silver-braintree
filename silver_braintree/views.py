@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from silver.payment_processors import get_instance
 from silver.payment_processors.views import GenericTransactionView
 
@@ -21,6 +22,9 @@ class BraintreeTransactionView(GenericTransactionView):
         payment_processor = get_instance(self.transaction.payment_processor)
         context_data['client_token'] = payment_processor.client_token(
                 self.transaction.customer
+        )
+        context_data['is_recurring'] = payment_processor.is_payment_method_recurring(
+            self.transaction.payment_method
         )
 
         return context_data

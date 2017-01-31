@@ -74,16 +74,6 @@ class BraintreePaymentMethod(PaymentMethod):
     def nonce(self, value):
         self.data['nonce'] = self.encrypt_data(value)
 
-    @property
-    def is_usable(self):
-        if not self.enabled:
-            return False
-
-        if not (self.token or self.nonce):
-            return False
-
-        return True
-
     def update_details(self, details):
         if 'details' not in self.data:
             self.data['details'] = details

@@ -102,8 +102,6 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
                 payment_method.token = result_details.token
                 payment_method.data.pop('nonce', None)
                 payment_method.verified = True
-        else:
-            payment_method.enabled = False
 
         payment_method.save()
 
@@ -114,6 +112,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
                                    result(response).
         :description: Updates a given transaction's data with data from a
                       braintreeSDK result payment method.
+        :returns True if transaction is on the happy path, False otherwise.
         """
         if not transaction.data:
             transaction.data = {}
@@ -123,29 +122,42 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
 
         transaction.data['status'] = status
 
+        target_state = None
         try:
             if status in [braintree.Transaction.Status.AuthorizationExpired,
                           braintree.Transaction.Status.SettlementDeclined,
                           braintree.Transaction.Status.Failed,
                           braintree.Transaction.Status.GatewayRejected,
                           braintree.Transaction.Status.ProcessorDeclined]:
-                if transaction.state != transaction.States.Failed:
+                target_state = transaction.States.Failed
+                if transaction.state != target_state:
                     transaction.fail()
+                    return False
 
             elif status == braintree.Transaction.Status.Voided:
-                if transaction.state != transaction.States.Canceled:
+                target_state = transaction.States.Canceled
+                if transaction.state != target_state:
                     transaction.cancel()
+                    return False
 
             elif status in [braintree.Transaction.Status.Settling,
                             braintree.Transaction.Status.SettlementPending,
                             braintree.Transaction.Status.Settled]:
-                if transaction.state != transaction.States.Settled:
+                target_state = transaction.States.Settled
+                if transaction.state != target_state:
                     transaction.settle()
-
-            return True
+                    return True
+            else:
+                return True
         except TransitionNotAllowed as e:
-            # TODO handle this (probably throw something else)
-            return False
+            logger.warning('Braintree Transaction couldn\'t transition locally: '
+                           '%s' % {
+                               'initial_state': transaction.state,
+                               'target_state': target_state,
+                               'transaction_id': transaction.id,
+                               'transaction_uuid': transaction.uuid
+                           })
+            raise e
         finally:
             transaction.save()
 
@@ -162,8 +174,12 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
         """
         payment_method = transaction.payment_method
 
-        if not payment_method.is_usable:
-            return False
+        if payment_method.canceled:
+            try:
+                transaction.fail()
+                transaction.save()
+            finally:
+                return False
 
         # prepare payload
         options = {
@@ -171,21 +187,25 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
         }
 
         if payment_method.token:
-            data = {'payment_method_token': payment_method.token}
+            payload = {'payment_method_token': payment_method.token}
         elif payment_method.nonce:
             options.update({
                 "store_in_vault": self.is_payment_method_recurring(payment_method)
             })
-            data = {'payment_method_nonce': payment_method.nonce}
+            payload = {'payment_method_nonce': payment_method.nonce}
         else:
             logger.warning('Token or nonce not found when charging '
                            'BraintreePaymentMethod: %s', {
                                'payment_method_id': payment_method.id
                            })
 
-            return False
+            try:
+                transaction.fail()
+                transaction.save()
+            finally:
+                return False
 
-        data.update({
+        payload.update({
             'amount': transaction.amount,
             'billing': {
                 'postal_code': payment_method.data.get('postal_code')
@@ -197,11 +217,11 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
 
         customer = transaction.customer
         if 'braintree_id' in customer.meta:
-            data.update({
+            payload.update({
                 'customer_id': customer.meta['braintree_id']
             })
         else:
-            data.update({
+            payload.update({
                 'customer': {
                     'first_name': customer.first_name,
                     'last_name': customer.last_name
@@ -209,7 +229,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
             })
 
         # send transaction request
-        result = braintree.Transaction.sale(data)
+        result = braintree.Transaction.sale(payload)
 
         # handle response
         if not result.is_success or not result.transaction:
@@ -225,14 +245,13 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
                                       else None)
             })
 
-            transaction.data['error_codes'] = errors
-            transaction.save()
+            try:
+                transaction.fail()
+            finally:
+                transaction.data['error_codes'] = errors
+                transaction.save()
 
-            if not payment_method.token:
-                payment_method.enabled = False
-                payment_method.save()
-
-            return False
+                return False
 
         self._update_customer(customer, result.transaction.customer_details)
 
@@ -244,20 +263,22 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
             details = result.transaction.credit_card_details
         else:
             # Only PayPal and CreditCard are currently handled
-            return False
+            try:
+                transaction.fail()
+                transaction.save()
+            finally:
+                return False
 
         self._update_payment_method(
             payment_method, details, instrument_type
         )
-        if not self._update_transaction_status(transaction, result.transaction):
-            logger.warning('Braintree Transaction succeeded on Braintree but '
-                           'not reflected locally: %s' % {
-                               'transaction_id': transaction.id,
-                               'transaction_uuid': transaction.uuid
-                           })
-            return False
 
-        return True
+        try:
+            return self._update_transaction_status(transaction,
+                                                   result.transaction)
+        except TransitionNotAllowed:
+            # ToDo handle this
+            return False
 
     def execute_transaction(self, transaction):
         """
@@ -274,7 +295,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
 
         return self._charge_transaction(transaction)
 
-    def update_transaction_status(self, transaction):
+    def fetch_transaction_status(self, transaction):
         """
         :param transaction: A Braintree transaction in Initial or Pending state.
         :return: True on success, False on failure.
@@ -310,11 +331,14 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
                                 'transaction_uuid': transaction.uuid
                            })
             return False
+        except TransitionNotAllowed:
+            return False
+            # ToDo handle this
 
     def handle_transaction_response(self, transaction, request):
         payment_method_nonce = request.POST.get('payment_method_nonce')
-        payment_method = transaction.payment_method
 
+        payment_method = transaction.payment_method
         if payment_method.nonce or not payment_method_nonce:
             try:
                 transaction.fail()
