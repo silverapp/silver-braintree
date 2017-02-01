@@ -350,6 +350,11 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
         if transaction.state != transaction.States.Initial:
             return False
 
+        try:
+            transaction.process()
+        except TransitionNotAllowed:
+            return False
+
         return self._charge_transaction(transaction)
 
     def fetch_transaction_status(self, transaction):
@@ -396,7 +401,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
         payment_method_nonce = request.POST.get('payment_method_nonce')
 
         payment_method = transaction.payment_method
-        if not not payment_method_nonce:
+        if not payment_method_nonce:
             try:
                 transaction.fail(fail_reason='payment_method_nonce was not provided.')
                 transaction.save()
