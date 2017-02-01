@@ -18,6 +18,7 @@ from braintree import Transaction as BraintreeTransaction
 
 from silver.models import Transaction
 from silver.payment_processors import get_instance
+from silver_braintree.models.customer_data import CustomerData
 from silver_braintree.payment_processors import (BraintreeTriggered,
                                                  BraintreeTriggeredRecurring)
 from tests.factories import BraintreeTransactionFactory
@@ -137,8 +138,11 @@ class TestBraintreeTransactions:
             }
 
             customer = transaction.customer
-            assert customer.meta.get('braintree_id') == \
-                self.transaction.customer_details.id
+            customer_data = CustomerData.objects.filter(customer=customer)
+            assert len(customer_data) == 1
+
+            customer_data = customer_data[0]
+            assert customer_data.get('id') == self.transaction.customer_details.id
 
             assert transaction.data.get('status') == self.result.transaction.status
 
@@ -153,8 +157,9 @@ class TestBraintreeTransactions:
         payment_method.save()
 
         customer = payment_method.customer
-        customer.meta['braintree_id'] = 'somethingelse'
-        customer.save()
+        customer_data = CustomerData.objects.create(
+            customer=customer, data={'id': 'somethingelse'}
+        )
 
         with patch('braintree.Transaction.sale') as sale_mock:
             sale_mock.return_value = self.result
@@ -164,7 +169,7 @@ class TestBraintreeTransactions:
 
             sale_mock.assert_called_once_with({
                 # existing customer in vault
-                'customer_id': customer.meta['braintree_id'],
+                'customer_id': customer_data['id'],
                 'amount': transaction.amount,
                 'billing': {'postal_code': None},
                 'options': {'submit_for_settlement': True},
@@ -229,8 +234,12 @@ class TestBraintreeTransactions:
             assert transaction.data.get('status') == self.result.transaction.status
 
             customer = transaction.customer
-            assert customer.meta.get('braintree_id') == \
-                self.transaction.customer_details.id
+
+            customer_data = CustomerData.objects.filter(customer=customer)
+            assert len(customer_data) == 1
+
+            customer_data = customer_data[0]
+            assert customer_data.get('id') == self.transaction.customer_details.id
 
     @pytest.mark.django_db
     def test_execute_transaction_with_nonce_recurring_credit_card(self):
@@ -278,8 +287,13 @@ class TestBraintreeTransactions:
             assert transaction.data.get('status') == self.result.transaction.status
 
             customer = transaction.customer
-            assert customer.meta.get('braintree_id') == \
-                self.transaction.customer_details.id
+
+            customer_data = CustomerData.objects.filter(customer=customer)
+            assert len(customer_data) == 1
+
+            customer_data = customer_data[0]
+
+            assert customer_data.get('id') == self.transaction.customer_details.id
 
     @pytest.mark.django_db
     def test_execute_transaction_with_canceled_payment_method(self):
