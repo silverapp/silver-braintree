@@ -26,6 +26,7 @@ from silver.payment_processors.forms import GenericTransactionForm
 from silver.payment_processors.mixins import TriggeredProcessorMixin
 
 from silver_braintree.models import BraintreePaymentMethod
+from silver_braintree.models.customer_data import CustomerData
 from silver_braintree.views import BraintreeTransactionView
 
 
@@ -55,15 +56,21 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
         BraintreeTriggeredBase._has_been_setup = True
 
     def client_token(self, customer):
-        customer_braintree_id = customer.meta.get('braintree_id')
+        customer_data = CustomerData.objects.filter(customer=customer)
+        customer_braintree_id = customer_data.get('id')
 
         try:
             return braintree.ClientToken.generate(
                 {'customer_id': customer_braintree_id}
             )
         except (AuthenticationError, AuthorizationError, DownForMaintenanceError,
-                ServerError, UpgradeRequiredError):
-            return None
+                ServerError, UpgradeRequiredError) as e:
+            logger.warning(
+                'Couldn\'t obtain Braintree client_token %s', {
+                    'customer_id': customer_braintree_id,
+                    'exception': str(e)
+                }
+            )
 
     def refund_transaction(self, transaction, payment_method=None):
         pass
@@ -162,9 +169,10 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
             transaction.save()
 
     def _update_customer(self, customer, result_details):
-        if 'braintree_id' not in customer.meta:
-            customer.meta['braintree_id'] = result_details.id
-            customer.save()
+        customer_data = CustomerData.objects.get_or_create(customer=customer)[0]
+        if 'id' not in customer_data:
+            customer_data['id'] = result_details.id
+            customer_data.save()
 
     def _charge_transaction(self, transaction):
         """
@@ -216,9 +224,11 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
         })
 
         customer = transaction.customer
-        if 'braintree_id' in customer.meta:
+        customer_data = CustomerData.objects.get_or_create(customer=customer)[0]
+
+        if 'id' in customer_data:
             payload.update({
-                'customer_id': customer.meta['braintree_id']
+                'customer_id': customer_data['id']
             })
         else:
             payload.update({
