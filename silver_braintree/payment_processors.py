@@ -138,7 +138,9 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
                           braintree.Transaction.Status.ProcessorDeclined]:
                 target_state = transaction.States.Failed
                 if transaction.state != target_state:
-                    transaction.fail()
+                    fail_code = self._get_silver_fail_code(result_transaction)
+                    fail_reason = self._get_braintree_fail_code(result_transaction)
+                    transaction.fail(fail_code=fail_code, fail_reason=fail_reason)
                     return False
 
             elif status == braintree.Transaction.Status.Voided:
@@ -174,6 +176,52 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
             customer_data['id'] = result_details.id
             customer_data.save()
 
+    def _get_errors(self, result):
+        return [
+            error.code for error in result.errors.deep_errors
+        ] if result.errors else None
+
+    def _get_braintree_fail_code(self, result_transaction):
+        if result_transaction.status in (
+                braintree.Transaction.Status.ProcessorDeclined,
+                braintree.Transaction.Status.AuthorizationExpired
+        ):
+            return result_transaction.processor_response_code,
+
+        elif result_transaction.status in (
+                braintree.Transaction.Status.SettlementDeclined,
+                braintree.Transaction.Status.SettlementFailed
+        ):
+            return result_transaction.processor_settlement_response_code,
+
+    def _get_silver_fail_code(self, result_transaction):
+        braintree_fail_code = self._get_braintree_fail_code(result_transaction)
+
+        if not braintree_fail_code:
+            return 'default'
+
+        if braintree_fail_code in [2001]:
+            return 'insufficient_funds'
+        elif braintree_fail_code in [2022]:
+            return 'expired_payment_method'
+        elif braintree_fail_code in [2004, 2022]:
+            return 'expired_card'
+        elif braintree_fail_code in [2071, 2072, 2073]:
+            return 'invalid_payment_method'
+        elif braintree_fail_code in [2005, 2006]:
+            return 'invalid_card'
+        elif braintree_fail_code in [2002, 2003, 2086]:
+            return 'limit_exceeded'
+        elif braintree_fail_code in [2000, 2010, 2019, 2038, 2046, 2061, 2062,
+                                     2064]:
+            return 'transaction_declined_by_bank'
+        elif braintree_fail_code in [2075, 2076, 2077]:
+            return 'transaction_hard_declined'
+        elif braintree_fail_code in [2012, 2013, 2014, 2074]:
+            return 'transaction_hard_declined_by_bank'
+
+        return 'default'
+
     def _charge_transaction(self, transaction):
         """
         :param transaction: The transaction to be charged. Must have a useable
@@ -184,7 +232,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
 
         if payment_method.canceled:
             try:
-                transaction.fail()
+                transaction.fail(fail_reason='Payment method was canceled.')
                 transaction.save()
             finally:
                 return False
@@ -208,7 +256,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
                            })
 
             try:
-                transaction.fail()
+                transaction.fail(fail_reason='Payment method has no token or nonce.')
                 transaction.save()
             finally:
                 return False
@@ -243,10 +291,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
 
         # handle response
         if not result.is_success or not result.transaction:
-            errors = [
-                error.code for error in result.errors.deep_errors
-            ] if result.errors else None
-
+            errors = self._get_errors(result)
             logger.warning('Couldn\'t charge Braintree transaction.: %s', {
                 'message': result.message,
                 'errors': errors,
@@ -255,10 +300,11 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
                                       else None)
             })
 
+            transaction.data['error_codes'] = errors
             try:
-                transaction.fail()
+                fail_code = self._get_silver_fail_code(result.transaction)
+                transaction.fail(fail_code=fail_code, fail_reason=errors)
             finally:
-                transaction.data['error_codes'] = errors
                 transaction.save()
 
                 return False
@@ -274,7 +320,8 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
         else:
             # Only PayPal and CreditCard are currently handled
             try:
-                transaction.fail()
+                transaction.fail(fail_code='invalid_payment_method',
+                                 fail_reason='Not a supported instrument_type')
                 transaction.save()
             finally:
                 return False
@@ -349,9 +396,18 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
         payment_method_nonce = request.POST.get('payment_method_nonce')
 
         payment_method = transaction.payment_method
-        if payment_method.nonce or not payment_method_nonce:
+        if not not payment_method_nonce:
             try:
-                transaction.fail()
+                transaction.fail(fail_reason='payment_method_nonce was not provided.')
+                transaction.save()
+            except TransitionNotAllowed:
+                pass
+            finally:
+                return
+
+        if payment_method.nonce:
+            try:
+                transaction.fail(fail_reason='Payment method already has a nonce.')
                 transaction.save()
             except TransitionNotAllowed:
                 pass
