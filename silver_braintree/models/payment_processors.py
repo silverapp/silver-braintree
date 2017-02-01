@@ -44,6 +44,8 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
         raise NotImplementedError
 
     def __init__(self, name, *args, **kwargs):
+        super(BraintreeTriggeredBase, self).__init__(name)
+
         if self._has_been_setup:
             return
 
@@ -51,8 +53,6 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
         braintree.Configuration.configure(environment, **kwargs)
 
         BraintreeTriggeredBase._has_been_setup = True
-
-        super(BraintreeTriggeredBase, self).__init__(name)
 
     def client_token(self, customer):
         customer_braintree_id = customer.meta.get('braintree_id')
@@ -102,7 +102,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
                 payment_method.token = result_details.token
                 payment_method.data.pop('nonce', None)
                 payment_method.verified = True
-
+                
         payment_method.save()
 
     def _update_transaction_status(self, transaction, result_transaction):
@@ -376,7 +376,5 @@ class BraintreeTriggered(BraintreeTriggeredBase):
 
 
 class BraintreeTriggeredRecurring(BraintreeTriggeredBase):
-    reference = 'braintree_triggered_recurring'
-
     def is_payment_method_recurring(self, payment_method):
         return True
