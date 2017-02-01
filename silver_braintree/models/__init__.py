@@ -13,4 +13,3 @@
 # limitations under the License.
 
 from .payment_methods import BraintreePaymentMethod
-from .payment_processors import BraintreeTriggered, BraintreeTriggeredRecurring

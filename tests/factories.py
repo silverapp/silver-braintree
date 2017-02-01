@@ -15,7 +15,7 @@ import factory
 
 from silver.tests.factories import TransactionFactory, CustomerFactory
 
-from silver_braintree.models import BraintreePaymentMethod, BraintreeTriggered
+from silver_braintree.models import BraintreePaymentMethod
 
 
 class BraintreePaymentMethodFactory(factory.DjangoModelFactory):
@@ -28,4 +28,3 @@ class BraintreePaymentMethodFactory(factory.DjangoModelFactory):
 
 class BraintreeTransactionFactory(TransactionFactory):
     payment_method = factory.SubFactory(BraintreePaymentMethodFactory)
-

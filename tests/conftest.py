@@ -33,7 +33,7 @@ settings.configure(
                 'public_key': "your-public-id-here",
                 'private_key': "your-private-id-here"
             },
-            'class': 'silver_braintree.BraintreeTriggered',
+            'class': 'silver_braintree.payment_processors.BraintreeTriggered',
         },
         'BraintreeTriggeredRecurring': {
             'setup_data': {
@@ -42,7 +42,7 @@ settings.configure(
                 'public_key': "your-public-id-here",
                 'private_key': "your-private-id-here"
             },
-            'class': 'silver_braintree.BraintreeTriggeredRecurring'
+            'class': 'silver_braintree.payment_processors.BraintreeTriggeredRecurring'
         },
         'Manual': {
             'class': 'silver.models.payment_processors.manual.ManualProcessor'

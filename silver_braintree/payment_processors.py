@@ -25,8 +25,8 @@ from silver.payment_processors import PaymentProcessorBase, get_instance
 from silver.payment_processors.forms import GenericTransactionForm
 from silver.payment_processors.mixins import TriggeredProcessorMixin
 
-from .payment_methods import BraintreePaymentMethod
-from ..views import BraintreeTransactionView
+from silver_braintree.models import BraintreePaymentMethod
+from silver_braintree.views import BraintreeTransactionView
 
 
 logger = logging.getLogger(__name__)
@@ -102,7 +102,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
                 payment_method.token = result_details.token
                 payment_method.data.pop('nonce', None)
                 payment_method.verified = True
-                
+
         payment_method.save()
 
     def _update_transaction_status(self, transaction, result_transaction):
