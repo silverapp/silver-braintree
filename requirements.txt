@@ -1,3 +1,2 @@
+git+https://git@github.com/silverapp/silver.git@27e320f5a3d820741e6ee41c59191a3234f7c6d6#egg=silver
 braintree==3.32.0
-
-# git+https://git@github.com/silverapp/silver.git@master#egg=silver
