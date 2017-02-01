@@ -5,3 +5,5 @@ include requirements.test.txt
 include requirements.txt
 graft silver_braintree
 global-exclude *.orig *.pyc *.log *.swp
+include versioneer.py
+include silver_braintree/_version.py

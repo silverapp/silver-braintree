@@ -16,10 +16,13 @@
 # -*- encoding: utf-8 -*-
 
 import os
+
+import versioneer
 from setuptools import setup, find_packages
 
+from silver_braintree import __version__ as version
+
 install_requires = ['braintree']
-__version__ = '0.1.0'
 
 
 def read(fname):
@@ -30,7 +33,8 @@ def read(fname):
 
 setup(
     name="silver-braintree",
-    version=__version__,
+    version=version,
+    cmdclass=versioneer.get_cmdclass(),
     description=read('DESCRIPTION'),
     long_description=read('README.md'),
     license='Apache 2.0',
@@ -41,7 +45,6 @@ setup(
     url='https://github.com/silverapp/silver-braintree',
     packages=find_packages(),
     include_package_data=True,
-    dependency_links = ['http://github.com/silverapp/silver/tarball/master#egg=silver'],
     install_requires=install_requires,
     classifiers=[
         'Environment :: Web Environment',
