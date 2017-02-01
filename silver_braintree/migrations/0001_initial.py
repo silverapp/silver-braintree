@@ -21,7 +21,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('silver', '0016_auto_20161227_1628'),
+        ('silver', '0032_auto_20170201_1342'),
     ]
 
     operations = [
