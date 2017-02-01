@@ -62,8 +62,13 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
                 {'customer_id': customer_braintree_id}
             )
         except (AuthenticationError, AuthorizationError, DownForMaintenanceError,
-                ServerError, UpgradeRequiredError):
-            return None
+                ServerError, UpgradeRequiredError) as e:
+            logger.warning(
+                'Couldn\'t obtain Braintree client_token %s', {
+                    'customer_id': customer_braintree_id,
+                    'exception': str(e)
+                }
+            )
 
     def refund_transaction(self, transaction, payment_method=None):
         pass
