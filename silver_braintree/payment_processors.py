@@ -56,7 +56,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
         BraintreeTriggeredBase._has_been_setup = True
 
     def client_token(self, customer):
-        customer_data = CustomerData.objects.filter(customer=customer)
+        customer_data = CustomerData.objects.get_or_create(customer=customer)[0]
         customer_braintree_id = customer_data.get('id')
 
         try:
