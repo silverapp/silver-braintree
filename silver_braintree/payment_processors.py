@@ -352,6 +352,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
 
         try:
             transaction.process()
+            transaction.save()
         except TransitionNotAllowed:
             return False
 
