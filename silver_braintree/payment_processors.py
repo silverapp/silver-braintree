@@ -180,7 +180,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
     def _get_errors(self, result):
         return [
             error.code for error in result.errors.deep_errors
-        ] if result.errors else None
+        ] if result.errors else self._get_braintree_fail_code(result.transaction)
 
     def _get_braintree_fail_code(self, result_transaction):
         if result_transaction.status in (
@@ -302,6 +302,9 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
             })
 
             transaction.data['error_codes'] = errors
+            transaction.data['response_code'] = self._get_braintree_fail_code(
+                result.transaction
+            )
             try:
                 fail_code = self._get_silver_fail_code(result.transaction)
                 transaction.fail(fail_code=fail_code, fail_reason=errors)
