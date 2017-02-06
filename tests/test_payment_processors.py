@@ -137,6 +137,9 @@ class TestBraintreeTransactions:
                 'type': self.transaction.payment_instrument_type,
             }
 
+            assert (payment_method.display_info ==
+                    self.transaction.paypal_details.payer_email)
+
             customer = transaction.customer
             customer_data = CustomerData.objects.filter(customer=customer)
             assert len(customer_data) == 1
@@ -187,6 +190,8 @@ class TestBraintreeTransactions:
                 'type': self.transaction.payment_instrument_type,
             }
             assert payment_method.verified
+            assert (payment_method.display_info ==
+                    self.transaction.paypal_details.payer_email)
 
             assert transaction.data.get('status') == self.result.transaction.status
 
@@ -230,6 +235,8 @@ class TestBraintreeTransactions:
             }
             assert payment_method.verified
             assert not payment_method.nonce
+            assert (payment_method.display_info ==
+                    self.transaction.paypal_details.payer_email)
 
             assert transaction.data.get('status') == self.result.transaction.status
 

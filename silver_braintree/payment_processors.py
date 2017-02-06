@@ -96,6 +96,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
 
         if instrument_type == payment_method.Types.PayPal:
             payment_method_details['email'] = result_details.payer_email
+            payment_method.display_info = result_details.payer_email
         elif instrument_type == payment_method.Types.CreditCard:
             payment_method_details.update({
                 'card_type': result_details.card_type,
