@@ -201,6 +201,11 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
         if not braintree_fail_code:
             return 'default'
 
+        try:
+            braintree_fail_code = int(braintree_fail_code)
+        except (TypeError, ValueError):
+            return 'default'
+
         if braintree_fail_code in [2001]:
             return 'insufficient_funds'
         elif braintree_fail_code in [2022]:
