@@ -3,4 +3,5 @@ build:
   pull: true
   commands:
     - pip install -U -r requirements.test.txt
+    - make lint
     - make test
