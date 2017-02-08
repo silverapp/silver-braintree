@@ -96,6 +96,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
 
         if instrument_type == payment_method.Types.PayPal:
             payment_method_details['email'] = result_details.payer_email
+            payment_method.display_info = result_details.payer_email
         elif instrument_type == payment_method.Types.CreditCard:
             payment_method_details.update({
                 'card_type': result_details.card_type,
@@ -179,7 +180,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
     def _get_errors(self, result):
         return [
             error.code for error in result.errors.deep_errors
-        ] if result.errors else None
+        ] if result.errors else self._get_braintree_fail_code(result.transaction)
 
     def _get_braintree_fail_code(self, result_transaction):
         if result_transaction.status in (
@@ -198,6 +199,11 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
         braintree_fail_code = self._get_braintree_fail_code(result_transaction)
 
         if not braintree_fail_code:
+            return 'default'
+
+        try:
+            braintree_fail_code = int(braintree_fail_code)
+        except (TypeError, ValueError):
             return 'default'
 
         if braintree_fail_code in [2001]:
@@ -301,6 +307,9 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
             })
 
             transaction.data['error_codes'] = errors
+            transaction.data['response_code'] = self._get_braintree_fail_code(
+                result.transaction
+            )
             try:
                 fail_code = self._get_silver_fail_code(result.transaction)
                 transaction.fail(fail_code=fail_code, fail_reason=errors)
