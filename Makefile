@@ -10,6 +10,6 @@ build:
 	echo "No need to build someting"
 
 lint:
-	pep8 --max-line-length=100 --exclude=migrations,errors.py .
+	pep8 --max-line-length=100 --exclude=migrations .
 
 .PHONY: test full-test build lint run
