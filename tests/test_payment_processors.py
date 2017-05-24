@@ -21,7 +21,7 @@ from silver.payment_processors import get_instance
 from silver_braintree.models.customer_data import CustomerData
 from silver_braintree.payment_processors import (BraintreeTriggered,
                                                  BraintreeTriggeredRecurring)
-from tests.factories import BraintreeTransactionFactory
+from tests.factories import BraintreeTransactionFactory, BraintreePaymentMethodFactory
 
 
 class TestBraintreeTransactions:
@@ -127,6 +127,9 @@ class TestBraintreeTransactions:
             })
 
             assert transaction.state == transaction.States.Settled
+            assert (transaction.external_reference ==
+                    transaction.data['braintree_id'] ==
+                    self.result.transaction.id)
 
             payment_method.refresh_from_db()
             assert not payment_method.token
@@ -151,9 +154,10 @@ class TestBraintreeTransactions:
 
     @pytest.mark.django_db
     def test_execute_transaction_with_token_recurring(self):
-        transaction = BraintreeTransactionFactory.create()
-        transaction.payment_method.payment_processor = 'BraintreeTriggeredRecurring'
-        transaction.payment_method.save()
+        payment_method = BraintreePaymentMethodFactory.create(
+            payment_processor='BraintreeTriggeredRecurring'
+        )
+        transaction = BraintreeTransactionFactory.create(payment_method=payment_method)
 
         payment_method = transaction.payment_method
         payment_method.token = 'kento'
@@ -181,6 +185,9 @@ class TestBraintreeTransactions:
             })
 
             assert transaction.state == transaction.States.Settled
+            assert (transaction.external_reference ==
+                    transaction.data['braintree_id'] ==
+                    self.result.transaction.id)
 
             payment_method.refresh_from_db()
             assert payment_method.token == self.transaction.paypal_details.token
@@ -197,9 +204,10 @@ class TestBraintreeTransactions:
 
     @pytest.mark.django_db
     def test_execute_transaction_with_nonce_recurring_paypal(self):
-        transaction = BraintreeTransactionFactory.create()
-        transaction.payment_method.payment_processor = 'BraintreeTriggeredRecurring'
-        transaction.payment_method.save()
+        payment_method = BraintreePaymentMethodFactory.create(
+            payment_processor='BraintreeTriggeredRecurring'
+        )
+        transaction = BraintreeTransactionFactory.create(payment_method=payment_method)
 
         nonce = 'some-nonce'
         payment_method = transaction.payment_method
@@ -225,6 +233,9 @@ class TestBraintreeTransactions:
             })
 
             assert transaction.state == transaction.States.Settled
+            assert (transaction.external_reference ==
+                    transaction.data['braintree_id'] ==
+                    self.result.transaction.id)
 
             payment_method.refresh_from_db()
             assert payment_method.token == self.transaction.paypal_details.token
@@ -250,9 +261,10 @@ class TestBraintreeTransactions:
 
     @pytest.mark.django_db
     def test_execute_transaction_with_nonce_recurring_credit_card(self):
-        transaction = BraintreeTransactionFactory.create()
-        transaction.payment_method.payment_processor = 'BraintreeTriggeredRecurring'
-        transaction.payment_method.save()
+        payment_method = BraintreePaymentMethodFactory.create(
+            payment_processor='BraintreeTriggeredRecurring'
+        )
+        transaction = BraintreeTransactionFactory.create(payment_method=payment_method)
 
         nonce = 'some-nonce'
         payment_method = transaction.payment_method
@@ -279,6 +291,9 @@ class TestBraintreeTransactions:
             })
 
             assert transaction.state == transaction.States.Settled
+            assert (transaction.external_reference ==
+                    transaction.data['braintree_id'] ==
+                    self.result.transaction.id)
 
             payment_method.refresh_from_db()
             assert payment_method.token == self.transaction.credit_card_details.token
