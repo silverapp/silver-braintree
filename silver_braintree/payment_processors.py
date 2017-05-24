@@ -128,7 +128,10 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
         transaction.external_reference = result_transaction.id
         status = result_transaction.status
 
-        transaction.data['status'] = status
+        transaction.data.update({
+            'status': status,
+            'braintree_id': result_transaction.id
+        })
 
         target_state = None
         try:
