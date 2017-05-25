@@ -13,14 +13,16 @@
 # limitations under the License.
 
 import logging
+from datetime import datetime, timedelta
 
 import braintree
 from braintree.exceptions import (AuthenticationError, AuthorizationError,
                                   DownForMaintenanceError, ServerError,
                                   UpgradeRequiredError)
+import dateutil.parser
 from django_fsm import TransitionNotAllowed
 
-
+from silver.models import Transaction
 from silver.payment_processors import PaymentProcessorBase, get_instance
 from silver.payment_processors.forms import GenericTransactionForm
 from silver.payment_processors.mixins import TriggeredProcessorMixin
@@ -296,6 +298,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
             })
 
         # send transaction request
+        transaction.data['requested_at'] = datetime.utcnow().isoformat()
         result = braintree.Transaction.sale(payload)
 
         # handle response
@@ -370,9 +373,50 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
 
         return self._charge_transaction(transaction)
 
+    def find_lost_transaction_id(self, transaction):
+        if transaction.data.get('braintree_id'):
+            return True
+
+        search_result = braintree.Transaction.search(
+            braintree.TransactionSearch.amount.is_equal(transaction.amount),
+            braintree.TransactionSearch.payment_method_token.is_equal(
+                transaction.payment_method.token
+            ),
+            braintree.TransactionSearch.created_at.between(
+                dateutil.parser.parse(transaction.data['requested_at']) - timedelta(seconds=1),
+                transaction.created_at + timedelta(seconds=61)
+            )
+        )
+
+        transaction_list = list(search_result.items)
+
+        # get rid of transactions that are already tracked before trying to find a match
+        if len(transaction_list) > 1:
+            transaction_list = [
+                transaction for transaction in transaction_list
+                if not Transaction.objects.filter(external_reference=transaction.id).exists()
+            ]
+
+        # there was a single match
+        if len(transaction_list) == 1:
+            transaction.data['braintree_id'] = transaction_list[0].id
+            transaction.external_reference = transaction_list[0].id
+
+            return True
+
+        # there were no transactions that could match our transaction
+        if not transaction_list:
+            transaction.fail(
+                fail_reason="The transaction request didn't reach Braintree."
+            )
+            transaction.save()
+
+        # if there are 2 or more potential matches, no action is taken
+        return False
+
     def fetch_transaction_status(self, transaction):
         """
-        :param transaction: A Braintree transaction in Initial or Pending state.
+        :param transaction: A Braintree transaction in Pending state.
         :return: True on success, False on failure.
         """
 
@@ -384,13 +428,14 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
             return False
 
         if not transaction.data.get('braintree_id'):
-            logger.warning('Found pending Braintree transaction with no '
-                           'braintree_id: %s', {
-                                'transaction_id': transaction.id,
-                                'transaction_uuid': transaction.uuid
-                           })
+            if not self.find_lost_transaction_id(transaction):
+                logger.warning('Found pending Braintree transaction with no '
+                               'braintree_id: %s', {
+                                    'transaction_id': transaction.id,
+                                    'transaction_uuid': transaction.uuid
+                               })
 
-            return False
+                return False
 
         try:
             result_transaction = braintree.Transaction.find(
