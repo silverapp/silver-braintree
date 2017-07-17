@@ -114,10 +114,9 @@ class TestBraintreeTransactions:
             }
         )
 
-        with patch('braintree.Transaction.find') as find_mock, \
-            patch('braintree.Transaction.search') as search_mock:
-            search_mock.items = []
-
+        with patch.multiple('braintree.Transaction',
+                            find=MagicMock(),
+                            search=MagicMock(items=[])):
             payment_processor = get_instance(transaction.payment_processor)
             payment_processor.fetch_transaction_status(transaction)
 
@@ -132,11 +131,9 @@ class TestBraintreeTransactions:
             }
         )
 
-        with patch('braintree.Transaction.find') as find_mock, \
-            patch('braintree.Transaction.search') as search_mock:
-            search_mock.return_value = self.search_result
-            find_mock.return_value = self.transaction
-
+        with patch.multiple('braintree.Transaction',
+                            find=MagicMock(return_value=self.transaction),
+                            search=MagicMock(return_value=self.search_result)):
             payment_processor = get_instance(transaction.payment_processor)
             payment_processor.fetch_transaction_status(transaction)
 

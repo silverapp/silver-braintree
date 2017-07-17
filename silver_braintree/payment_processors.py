@@ -117,7 +117,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
 
     def _update_transaction_status(self, transaction, result_transaction):
         """
-        :param transaction: A Transaction.
+        :param transaction: A Silver transaction with a Braintree payment method.
         :param result_transaction: A transaction from a braintreeSDK
                                    result(response).
         :description: Updates a given transaction's data with data from a
@@ -235,7 +235,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
 
     def _charge_transaction(self, transaction):
         """
-        :param transaction: The transaction to be charged. Must have a useable
+        :param transaction: The Silver transaction to be charged. Must have a usable Braintree
                             payment_method.
         :return: True on success, False on failure.
         """
@@ -354,8 +354,8 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
 
     def execute_transaction(self, transaction):
         """
-        :param transaction: A Braintree transaction in Initial state.
-        :return: True on success, False on failure.
+        :param transaction: A Silver transaction with a Braintree payment method, in Initial state.
+        :return: True if the transaction was successfully sent to processing, False otherwise.
         """
 
         payment_processor = get_instance(transaction.payment_processor)
@@ -373,7 +373,11 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
 
         return self._charge_transaction(transaction)
 
-    def find_lost_transaction_id(self, transaction):
+    def recover_lost_transaction_id(self, transaction):
+        """
+        :param transaction: A Silver transaction with a Braintree payment method.
+        :return: True if the transaction ID was recovered, False otherwise.
+        """
         if transaction.data.get('braintree_id'):
             return True
 
@@ -416,8 +420,8 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
 
     def fetch_transaction_status(self, transaction):
         """
-        :param transaction: A Braintree transaction in Pending state.
-        :return: True on success, False on failure.
+        :param transaction: A Silver transaction with a Braintree payment method, in Pending state.
+        :return: True if the transaction status was updated, False otherwise.
         """
 
         payment_processor = get_instance(transaction.payment_processor)
@@ -428,7 +432,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
             return False
 
         if not transaction.data.get('braintree_id'):
-            if not self.find_lost_transaction_id(transaction):
+            if not self.recover_lost_transaction_id(transaction):
                 logger.warning('Found pending Braintree transaction with no '
                                'braintree_id: %s', {
                                     'transaction_id': transaction.id,
