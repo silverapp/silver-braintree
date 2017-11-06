@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import pytest
+from datetime import datetime
 from mock import patch, MagicMock
 from braintree import Transaction as BraintreeTransaction
 
@@ -60,6 +61,8 @@ class TestBraintreeTransactions:
 
         self.result = result
 
+        self.search_result = MagicMock(items=[self.transaction])
+
     def teardown_method(self):
         BraintreeTriggered._has_been_setup = False
         BraintreeTriggeredRecurring._has_been_setup = False
@@ -101,6 +104,44 @@ class TestBraintreeTransactions:
 
             assert transaction.state == transaction.States.Failed
             assert transaction.data.get('status') == self.result.transaction.status
+
+    @pytest.mark.django_db
+    def test_update_status_transaction_with_no_braintree_id_case_1(self):
+        # The transaction is not found after a search, which means it hasn't reached braintree
+        transaction = BraintreeTransactionFactory.create(
+            state=Transaction.States.Pending, data={
+                'requested_at': datetime.utcnow().isoformat()
+            }
+        )
+
+        with patch.multiple('braintree.Transaction',
+                            find=MagicMock(),
+                            search=MagicMock(items=[])):
+            payment_processor = get_instance(transaction.payment_processor)
+            payment_processor.fetch_transaction_status(transaction)
+
+            assert transaction.state == transaction.States.Failed
+
+    @pytest.mark.django_db
+    def test_update_status_transaction_with_no_braintree_id_case_2(self):
+        # The transaction is found after a search and continues normally
+        transaction = BraintreeTransactionFactory.create(
+            state=Transaction.States.Pending, data={
+                'requested_at': datetime.utcnow().isoformat()
+            }
+        )
+
+        with patch.multiple('braintree.Transaction',
+                            find=MagicMock(return_value=self.transaction),
+                            search=MagicMock(return_value=self.search_result)):
+            payment_processor = get_instance(transaction.payment_processor)
+            payment_processor.fetch_transaction_status(transaction)
+
+            assert transaction.state == transaction.States.Settled
+            assert transaction.data.get('status') == self.result.transaction.status
+            assert (transaction.data['braintree_id'] ==
+                    transaction.external_reference ==
+                    self.transaction.id)
 
     @pytest.mark.django_db
     def test_execute_transaction_with_nonce_nonrecurring(self):
