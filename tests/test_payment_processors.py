@@ -202,6 +202,7 @@ class TestBraintreeTransactions:
         transaction = BraintreeTransactionFactory.create(payment_method=payment_method)
 
         payment_method = transaction.payment_method
+        payment_method.token = 'kento'
         payment_method.save()
 
         customer = payment_method.customer
@@ -246,7 +247,8 @@ class TestBraintreeTransactions:
     @pytest.mark.django_db
     def test_process_transaction_with_nonce_recurring_paypal(self):
         payment_method = BraintreePaymentMethodFactory.create(
-            payment_processor='BraintreeTriggeredRecurring'
+            payment_processor='BraintreeTriggeredRecurring',
+            data={}, # fuck you json field with you fuckedup mocking like shit
         )
         transaction = BraintreeTransactionFactory.create(payment_method=payment_method)
 
@@ -305,12 +307,10 @@ class TestBraintreeTransactions:
         payment_method = BraintreeRecurringPaymentMethodFactory.create(
             payment_processor='BraintreeTriggeredRecurring'
         )
-        print payment_method.token
 
         nonce = 'some-nonce'
         payment_method.nonce = nonce
         payment_method.save()
-        print payment_method.token
 
         transaction = BraintreeTransactionFactory.create(payment_method=payment_method)
 
@@ -382,7 +382,8 @@ class TestBraintreeTransactions:
     @pytest.mark.django_db
     def test_process_transaction_with_payment_method_without_nonce_or_token(self):
         payment_method = BraintreePaymentMethodFactory.create(
-            payment_processor='BraintreeTriggered'
+            payment_processor='BraintreeTriggered',
+            data={}
         )
         transaction = BraintreeTransactionFactory.create(
             payment_method=payment_method

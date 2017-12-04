@@ -29,6 +29,7 @@ class BraintreePaymentMethodFactory(factory.DjangoModelFactory):
 
     payment_processor = 'BraintreeTriggered'
     customer = factory.SubFactory(CustomerFactory)
+    data = {}
 
 
 @mute_signals(signals.pre_save, signals.post_save)

@@ -253,9 +253,6 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
             'submit_for_settlement': True,
         }
 
-        print(self.__class__)
-        print("IN PULA LU BETMEN", payment_method.nonce, payment_method.token)
-
         if payment_method.token:
             payload = {'payment_method_token': payment_method.token}
         elif payment_method.nonce:
