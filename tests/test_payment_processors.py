@@ -248,7 +248,6 @@ class TestBraintreeTransactions:
     def test_process_transaction_with_nonce_recurring_paypal(self):
         payment_method = BraintreePaymentMethodFactory.create(
             payment_processor='BraintreeTriggeredRecurring',
-            data={}, # fuck you json field with you fuckedup mocking like shit
         )
         transaction = BraintreeTransactionFactory.create(payment_method=payment_method)
 
@@ -383,7 +382,6 @@ class TestBraintreeTransactions:
     def test_process_transaction_with_payment_method_without_nonce_or_token(self):
         payment_method = BraintreePaymentMethodFactory.create(
             payment_processor='BraintreeTriggered',
-            data={}
         )
         transaction = BraintreeTransactionFactory.create(
             payment_method=payment_method

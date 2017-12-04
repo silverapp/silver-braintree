@@ -29,7 +29,7 @@ class BraintreePaymentMethodFactory(factory.DjangoModelFactory):
 
     payment_processor = 'BraintreeTriggered'
     customer = factory.SubFactory(CustomerFactory)
-    data = {}
+    data = factory.Sequence(lambda i: {})
 
 
 @mute_signals(signals.pre_save, signals.post_save)
@@ -39,6 +39,7 @@ class BraintreeRecurringPaymentMethodFactory(factory.DjangoModelFactory):
 
     payment_processor = 'BraintreeTriggeredRecurring'
     customer = factory.SubFactory(CustomerFactory)
+    data = factory.Sequence(lambda i: {})
 
 
 class BraintreeTransactionFactory(TransactionFactory):
