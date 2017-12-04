@@ -11,18 +11,32 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import factory
+from factory.django import mute_signals
+
+from django.db.models import signals
 
 from silver.tests.factories import TransactionFactory, CustomerFactory
 
 from silver_braintree.models import BraintreePaymentMethod
 
 
+@mute_signals(signals.pre_save, signals.post_save)
 class BraintreePaymentMethodFactory(factory.DjangoModelFactory):
     class Meta:
         model = BraintreePaymentMethod
 
     payment_processor = 'BraintreeTriggered'
+    customer = factory.SubFactory(CustomerFactory)
+
+
+@mute_signals(signals.pre_save, signals.post_save)
+class BraintreeRecurringPaymentMethodFactory(factory.DjangoModelFactory):
+    class Meta:
+        model = BraintreePaymentMethod
+
+    payment_processor = 'BraintreeTriggeredRecurring'
     customer = factory.SubFactory(CustomerFactory)
 
 

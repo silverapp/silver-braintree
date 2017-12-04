@@ -22,7 +22,8 @@ from silver.payment_processors import get_instance
 from silver_braintree.models.customer_data import CustomerData
 from silver_braintree.payment_processors import (BraintreeTriggered,
                                                  BraintreeTriggeredRecurring)
-from tests.factories import BraintreeTransactionFactory, BraintreePaymentMethodFactory
+from tests.factories import BraintreeTransactionFactory, BraintreePaymentMethodFactory, \
+    BraintreeRecurringPaymentMethodFactory
 
 
 class TestBraintreeTransactions:
@@ -201,7 +202,6 @@ class TestBraintreeTransactions:
         transaction = BraintreeTransactionFactory.create(payment_method=payment_method)
 
         payment_method = transaction.payment_method
-        payment_method.token = 'kento'
         payment_method.save()
 
         customer = payment_method.customer
@@ -302,15 +302,17 @@ class TestBraintreeTransactions:
 
     @pytest.mark.django_db
     def test_process_transaction_with_nonce_recurring_credit_card(self):
-        payment_method = BraintreePaymentMethodFactory.create(
+        payment_method = BraintreeRecurringPaymentMethodFactory.create(
             payment_processor='BraintreeTriggeredRecurring'
         )
-        transaction = BraintreeTransactionFactory.create(payment_method=payment_method)
+        print payment_method.token
 
         nonce = 'some-nonce'
-        payment_method = transaction.payment_method
         payment_method.nonce = nonce
         payment_method.save()
+        print payment_method.token
+
+        transaction = BraintreeTransactionFactory.create(payment_method=payment_method)
 
         with patch('braintree.Transaction.sale') as sale_mock:
             self.result.transaction.payment_instrument_type = 'credit_card'
@@ -360,12 +362,14 @@ class TestBraintreeTransactions:
 
     @pytest.mark.django_db
     def test_process_transaction_with_canceled_payment_method(self):
+        payment_method = BraintreePaymentMethodFactory.create(
+            payment_processor='BraintreeTriggeredRecurring'
+        )
         transaction = BraintreeTransactionFactory.create(
-            payment_processor='BraintreeTriggered'
+            payment_method=payment_method
         )
 
         nonce = 'some-nonce'
-        payment_method = transaction.payment_method
         payment_method.nonce = nonce
         payment_method.canceled = True
         payment_method.save()
@@ -377,8 +381,11 @@ class TestBraintreeTransactions:
 
     @pytest.mark.django_db
     def test_process_transaction_with_payment_method_without_nonce_or_token(self):
-        transaction = BraintreeTransactionFactory.create(
+        payment_method = BraintreePaymentMethodFactory.create(
             payment_processor='BraintreeTriggered'
+        )
+        transaction = BraintreeTransactionFactory.create(
+            payment_method=payment_method
         )
 
         with patch('braintree.Transaction.sale') as sale_mock:
@@ -389,12 +396,14 @@ class TestBraintreeTransactions:
 
     @pytest.mark.django_db
     def test_process_transaction_failed_braintree_response(self):
+        payment_method = BraintreePaymentMethodFactory.create(
+            payment_processor='BraintreeTriggeredRecurring'
+        )
         transaction = BraintreeTransactionFactory.create(
-            payment_processor='BraintreeTriggered'
+            payment_method=payment_method
         )
 
         nonce = 'some-nonce'
-        payment_method = transaction.payment_method
         payment_method.nonce = nonce
         payment_method.save()
 
