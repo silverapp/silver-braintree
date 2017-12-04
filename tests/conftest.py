@@ -49,15 +49,15 @@ settings.configure(
         }
     },
     INSTALLED_APPS=(
-                    'dal',
-                    'dal_select2',
-                    'django.contrib.auth',
-                    'django.contrib.contenttypes',
-                    'django.contrib.sessions',
-                    'django.contrib.staticfiles',
-                    'django.contrib.admin',
-                    'silver',
-                    'silver_braintree',),
+        'dal',
+        'dal_select2',
+        'django.contrib.auth',
+        'django.contrib.contenttypes',
+        'django.contrib.sessions',
+        'django.contrib.staticfiles',
+        'django.contrib.admin',
+        'silver',
+        'silver_braintree',),
     CACHES={
         'default': {
             'BACKEND': 'django.core.cache.backends.dummy.DummyCache',

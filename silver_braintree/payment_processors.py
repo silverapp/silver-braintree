@@ -362,13 +362,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
         if not payment_processor == self:
             return False
 
-        if transaction.state != transaction.States.Initial:
-            return False
-
-        try:
-            transaction.process()
-            transaction.save()
-        except TransitionNotAllowed:
+        if transaction.state != transaction.States.Pending:
             return False
 
         return self._charge_transaction(transaction)
