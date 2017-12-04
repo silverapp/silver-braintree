@@ -144,7 +144,7 @@ class TestBraintreeTransactions:
                     self.transaction.id)
 
     @pytest.mark.django_db
-    def test_execute_transaction_with_nonce_nonrecurring(self):
+    def test_process_transaction_with_nonce_nonrecurring(self):
         transaction = BraintreeTransactionFactory.create()
         payment_method = transaction.payment_method
         payment_method.nonce = 'some-nonce'
@@ -153,7 +153,7 @@ class TestBraintreeTransactions:
         with patch('braintree.Transaction.sale') as sale_mock:
             sale_mock.return_value = self.result
             payment_processor = get_instance(transaction.payment_processor)
-            payment_processor.execute_transaction(transaction)
+            payment_processor.process_transaction(transaction)
 
             sale_mock.assert_called_once_with({
                 # new customer
@@ -194,7 +194,7 @@ class TestBraintreeTransactions:
             assert transaction.data.get('status') == self.result.transaction.status
 
     @pytest.mark.django_db
-    def test_execute_transaction_with_token_recurring(self):
+    def test_process_transaction_with_token_recurring(self):
         payment_method = BraintreePaymentMethodFactory.create(
             payment_processor='BraintreeTriggeredRecurring'
         )
@@ -213,7 +213,7 @@ class TestBraintreeTransactions:
             sale_mock.return_value = self.result
 
             payment_processor = get_instance(transaction.payment_processor)
-            payment_processor.execute_transaction(transaction)
+            payment_processor.process_transaction(transaction)
 
             sale_mock.assert_called_once_with({
                 # existing customer in vault
@@ -244,7 +244,7 @@ class TestBraintreeTransactions:
             assert transaction.data.get('status') == self.result.transaction.status
 
     @pytest.mark.django_db
-    def test_execute_transaction_with_nonce_recurring_paypal(self):
+    def test_process_transaction_with_nonce_recurring_paypal(self):
         payment_method = BraintreePaymentMethodFactory.create(
             payment_processor='BraintreeTriggeredRecurring'
         )
@@ -259,7 +259,7 @@ class TestBraintreeTransactions:
             sale_mock.return_value = self.result
 
             payment_processor = get_instance(transaction.payment_processor)
-            payment_processor.execute_transaction(transaction)
+            payment_processor.process_transaction(transaction)
 
             sale_mock.assert_called_once_with({
                 # create new customer in vault
@@ -301,7 +301,7 @@ class TestBraintreeTransactions:
             assert customer_data.get('id') == self.transaction.customer_details.id
 
     @pytest.mark.django_db
-    def test_execute_transaction_with_nonce_recurring_credit_card(self):
+    def test_process_transaction_with_nonce_recurring_credit_card(self):
         payment_method = BraintreePaymentMethodFactory.create(
             payment_processor='BraintreeTriggeredRecurring'
         )
@@ -317,7 +317,7 @@ class TestBraintreeTransactions:
             sale_mock.return_value = self.result
 
             payment_processor = get_instance(transaction.payment_processor)
-            payment_processor.execute_transaction(transaction)
+            payment_processor.process_transaction(transaction)
 
             sale_mock.assert_called_once_with({
                 # create new customer in vault
@@ -359,7 +359,7 @@ class TestBraintreeTransactions:
             assert customer_data.get('id') == self.transaction.customer_details.id
 
     @pytest.mark.django_db
-    def test_execute_transaction_with_canceled_payment_method(self):
+    def test_process_transaction_with_canceled_payment_method(self):
         transaction = BraintreeTransactionFactory.create(
             payment_processor='BraintreeTriggered'
         )
@@ -372,11 +372,11 @@ class TestBraintreeTransactions:
 
         with patch('braintree.Transaction.sale') as sale_mock:
             payment_processor = get_instance(transaction.payment_processor)
-            assert payment_processor.execute_transaction(transaction) is False
+            assert payment_processor.process_transaction(transaction) is False
             assert sale_mock.call_count == 0
 
     @pytest.mark.django_db
-    def test_execute_transaction_with_payment_method_without_nonce_or_token(self):
+    def test_process_transaction_with_payment_method_without_nonce_or_token(self):
         transaction = BraintreeTransactionFactory.create(
             payment_processor='BraintreeTriggered'
         )
@@ -384,11 +384,11 @@ class TestBraintreeTransactions:
         with patch('braintree.Transaction.sale') as sale_mock:
             payment_processor = get_instance(transaction.payment_processor)
 
-            assert payment_processor.execute_transaction(transaction) is False
+            assert payment_processor.process_transaction(transaction) is False
             assert sale_mock.call_count == 0
 
     @pytest.mark.django_db
-    def test_execute_transaction_failed_braintree_response(self):
+    def test_process_transaction_failed_braintree_response(self):
         transaction = BraintreeTransactionFactory.create(
             payment_processor='BraintreeTriggered'
         )
@@ -403,7 +403,7 @@ class TestBraintreeTransactions:
             sale_mock.return_value = self.result
 
             payment_processor = get_instance(transaction.payment_processor)
-            assert payment_processor.execute_transaction(transaction) is False
+            assert payment_processor.process_transaction(transaction) is False
             assert transaction.data.get('error_codes') == [
                 error.code for error in self.result.errors.deep_errors
             ]
