@@ -487,7 +487,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
         # manage the transaction
         payment_processor = get_instance(payment_method.payment_processor)
 
-        if not payment_processor.execute_transaction(transaction):
+        if not payment_processor.process_transaction(transaction):
             try:
                 transaction.fail()
                 transaction.save()
