@@ -145,7 +145,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
                 target_state = transaction.States.Failed
                 if transaction.state != target_state:
                     fail_code = self._get_silver_fail_code(result_transaction)
-                    fail_reason = self._get_braintree_fail_code(result_transaction)
+                    fail_reason = self._get_braintree_transaction_fail_code(result_transaction)
                     transaction.fail(fail_code=fail_code, fail_reason=fail_reason)
                     return False
 
@@ -185,9 +185,9 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
     def _get_errors(self, result):
         return [
             error.code for error in result.errors.deep_errors
-        ] if result.errors else self._get_braintree_fail_code(result.transaction)
+        ] if result.errors else self._get_braintree_transaction_fail_code(result.transaction)
 
-    def _get_braintree_fail_code(self, result_transaction):
+    def _get_braintree_transaction_fail_code(self, result_transaction):
         if result_transaction.status in (
                 braintree.Transaction.Status.ProcessorDeclined,
                 braintree.Transaction.Status.AuthorizationExpired
@@ -201,7 +201,7 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
             return result_transaction.processor_settlement_response_code,
 
     def _get_silver_fail_code(self, result_transaction):
-        braintree_fail_code = self._get_braintree_fail_code(result_transaction)
+        braintree_fail_code = self._get_braintree_transaction_fail_code(result_transaction)
 
         if not braintree_fail_code:
             return 'default'
@@ -299,30 +299,35 @@ class BraintreeTriggeredBase(PaymentProcessorBase, TriggeredProcessorMixin):
 
         # send transaction request
         transaction.data['requested_at'] = datetime.utcnow().isoformat()
-        result = braintree.Transaction.sale(payload)
+        transaction.save()
 
-        # handle response
-        if not result.is_success or not result.transaction:
-            errors = self._get_errors(result)
-            logger.warning('Couldn\'t charge Braintree transaction.: %s', {
-                'message': result.message,
-                'errors': errors,
-                'customer_id': customer.id,
-                'card_verification': (result.credit_card_verification if errors
-                                      else None)
-            })
+        try:
+            result = braintree.Transaction.sale(payload)
 
-            transaction.data['error_codes'] = errors
-            transaction.data['response_code'] = self._get_braintree_fail_code(
-                result.transaction
-            )
-            try:
-                fail_code = self._get_silver_fail_code(result.transaction)
+            # handle response
+            if not result.is_success or not result.transaction:
+                errors = self._get_errors(result)
+                logger.warning('Couldn\'t charge Braintree transaction.: %s', {
+                    'message': result.message,
+                    'errors': errors,
+                    'customer_id': customer.id,
+                    'card_verification': (result.credit_card_verification if errors
+                                          else None)
+                })
+
+                transaction.data['error_codes'] = errors
+
+                if result.transaction:
+                    transaction.data['response_code'] = self._get_braintree_transaction_fail_code(
+                        result.transaction
+                    )
+                fail_code = (self._get_silver_fail_code(result.transaction) if result.transaction
+                             else 'default')
                 transaction.fail(fail_code=fail_code, fail_reason=errors)
-            finally:
-                transaction.save()
 
                 return False
+        finally:
+            transaction.save()
 
         self._update_customer(customer, result.transaction.customer_details)
 
