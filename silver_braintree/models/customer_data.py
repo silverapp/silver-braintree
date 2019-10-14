@@ -2,11 +2,11 @@ from jsonfield import JSONField
 from silver.models import Customer
 
 from django.core.exceptions import ValidationError
-from django.db.models import Model, ForeignKey
+from django.db.models import Model, ForeignKey, CASCADE
 
 
 class CustomerData(Model):
-    customer = ForeignKey(Customer)
+    customer = ForeignKey(Customer, on_delete=CASCADE)
     data = JSONField(default={}, null=True, blank=True)
 
     def clean(self):

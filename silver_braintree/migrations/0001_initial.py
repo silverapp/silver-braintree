@@ -40,7 +40,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('data', jsonfield.fields.JSONField(default={}, null=True, blank=True)),
-                ('customer', models.ForeignKey(to='silver.Customer')),
+                ('customer', models.ForeignKey(to='silver.Customer', on_delete=models.CASCADE)),
             ],
         ),
     ]
