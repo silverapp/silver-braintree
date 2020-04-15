@@ -22,7 +22,7 @@ from setuptools import setup, find_packages
 
 from silver_braintree import __version__ as version
 
-install_requires = ['braintree']
+install_requires = ['braintree==3.37.0']
 
 
 def read(fname):
