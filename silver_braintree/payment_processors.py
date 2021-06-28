@@ -28,7 +28,7 @@ from silver.payment_processors.forms import GenericTransactionForm
 from silver.payment_processors.mixins import TriggeredProcessorMixin
 
 from silver_braintree.models import BraintreePaymentMethod
-from silver_braintree.models.customer_data import CustomerData
+from silver_braintree.models import CustomerData
 from silver_braintree.views import BraintreeTransactionView
 
 

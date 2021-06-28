@@ -1,8 +1,44 @@
 language: python
+
 python:
-  - "2.7"
+  - "3.7"
 cache: pip
 install:
   - pip install -U -r requirements.test.txt
 script:
   - pytest --cov-report term-missing --cov=silver_braintree tests/
+
+
+pipeline:
+  test:
+    image: python:${PYTHON_VERSION}
+    pull: true
+    group: build
+    environment:
+      - SILVER_DB_ENGINE=django.db.backends.mysql
+      - SILVER_DB_NAME=test_db
+      - SILVER_DB_HOST=mysql
+      - SILVER_DB_USER=silver
+      - SILVER_DB_PASSWORD=silver
+    commands:
+      - make dependencies
+      - pip install -U "Django${DJANGO_VERSION}"
+      - mkdir /var/log/silver
+      - make lint
+      - make test
+
+services:
+  mysql:
+    image: mysql:5.7
+    environment:
+      - MYSQL_DATABASE=test_db
+      - MYSQL_ROOT_PASSWORD=secret
+      - MYSQL_USER=silver
+      - MYSQL_PASSWORD=silver
+
+matrix:
+  include:
+    - PYTHON_VERSION: 3.7
+      DJANGO_VERSION: ">=3.1,<3.2"
+    - PYTHON_VERSION: 3.7
+      DJANGO_VERSION: ">=3.2,<3.3"

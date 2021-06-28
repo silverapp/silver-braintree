@@ -13,3 +13,4 @@
 # limitations under the License.
 
 from .payment_methods import BraintreePaymentMethod
+from .customer_data import CustomerData

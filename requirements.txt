@@ -1,2 +1,2 @@
-django-silver
-braintree==3.37.0
+django-silver>=0.11
+braintree==3.59.0
