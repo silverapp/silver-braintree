@@ -66,7 +66,8 @@ settings.configure(
     },
     USE_TZ=True,
     STATIC_URL='/static/',
-    SILVER_AUTOMATICALLY_CREATE_TRANSACTIONS=True
+    SILVER_AUTOMATICALLY_CREATE_TRANSACTIONS=True,
+    SECRET_KEY='dummy'
 )
 
 django.setup()

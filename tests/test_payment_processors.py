@@ -19,7 +19,7 @@ from braintree import Transaction as BraintreeTransaction
 
 from silver.models import Transaction
 from silver.payment_processors import get_instance
-from silver_braintree.models.customer_data import CustomerData
+from silver_braintree.models import CustomerData
 from silver_braintree.payment_processors import (BraintreeTriggered,
                                                  BraintreeTriggeredRecurring)
 from tests.factories import BraintreeTransactionFactory, BraintreePaymentMethodFactory, \

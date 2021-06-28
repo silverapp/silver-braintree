@@ -15,7 +15,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-import jsonfield
 from django.db import migrations, models
 
 
@@ -39,7 +38,7 @@ class Migration(migrations.Migration):
             name='CustomerData',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('data', jsonfield.fields.JSONField(default={}, null=True, blank=True)),
+                ('data', models.JSONField(default={}, null=True, blank=True)),
                 ('customer', models.ForeignKey(to='silver.Customer', on_delete=models.CASCADE)),
             ],
         ),

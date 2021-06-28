@@ -13,17 +13,17 @@
 # limitations under the License.
 
 import factory
-from factory.django import mute_signals
+from factory.django import mute_signals, DjangoModelFactory
 
 from django.db.models import signals
 
-from silver.tests.factories import TransactionFactory, CustomerFactory
+from silver.fixtures.factories import CustomerFactory, TransactionFactory
 
 from silver_braintree.models import BraintreePaymentMethod
 
 
 @mute_signals(signals.pre_save, signals.post_save)
-class BraintreePaymentMethodFactory(factory.DjangoModelFactory):
+class BraintreePaymentMethodFactory(DjangoModelFactory):
     class Meta:
         model = BraintreePaymentMethod
 
@@ -33,7 +33,7 @@ class BraintreePaymentMethodFactory(factory.DjangoModelFactory):
 
 
 @mute_signals(signals.pre_save, signals.post_save)
-class BraintreeRecurringPaymentMethodFactory(factory.DjangoModelFactory):
+class BraintreeRecurringPaymentMethodFactory(DjangoModelFactory):
     class Meta:
         model = BraintreePaymentMethod
 

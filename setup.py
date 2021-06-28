@@ -17,12 +17,11 @@
 
 import os
 
-import versioneer
 from setuptools import setup, find_packages
 
 from silver_braintree import __version__ as version
 
-install_requires = ['braintree==3.37.0']
+install_requires = ['braintree==3.59.0']
 
 
 def read(fname):
@@ -34,7 +33,6 @@ def read(fname):
 setup(
     name="silver-braintree",
     version=version,
-    cmdclass=versioneer.get_cmdclass(),
     description=read('DESCRIPTION'),
     long_description=read('README.md'),
     license='Apache 2.0',
@@ -48,9 +46,10 @@ setup(
     install_requires=install_requires,
     classifiers=[
         'Environment :: Web Environment',
-        'Framework :: Django :: 1.8',
+        'Framework :: Django :: 3.1',
+        'Framework :: Django :: 3.2',
         'Development Status :: 5 - Production/Stable',
         'License :: OSI Approved :: Apache Software License',
-        'Programming Language :: Python :: 2.7'
+        'Programming Language :: Python :: 3.7'
     ]
 )
